@@ -1,14 +1,29 @@
 import numpy as np
 
+'''
+This module contains a collection of concentration-mass relations as given in the literature. All
+the functions below take a halo mass as an argument, and will return a predicted concentration.
+'''
+
 def child2018(m200c, fit='nfw'):
-    
-    # Mass-concentration relation from Child+2018
+    '''
+    Computes the predicted halo concentration, given a M_200c halo mass, using the 
+    c-M relation of Child et.al. 2018.
+
+    :param m200c: The halos mass M_200c in units of M_sun/h
+    :param fit: The set of fit parameters to use (Table 1 in Child+2018); options are
+                'all', 'relaxed', 'nfw_stack', or 'einasto_stack'
+    :return: the concentration parameter c_200c, given by the chosen c-M relation
+    :type m200c: float
+    :type fit: string
+    :rettype:float
+    '''
     
     p_all = {'m':-0.10, 'A':3.44, 'b':430.49, 'c0':3.19}
     p_relax = {'m':-0.09, 'A':2.88, 'b':1644.53, 'c0':3.54}
-    p_NFW = {'m':-0.07, 'A':4.61, 'b':638.65, 'c0':3.59}
-    p_einasto = {'m':-0.01, 'A':63.2, 'b':431.48, 'c0':3.36}
-    p = {'all':p_all, 'relax':p_relax, 'nfw':p_NFW, 'einasto':p_einasto}
+    p_nfw_stack = {'m':-0.07, 'A':4.61, 'b':638.65, 'c0':3.59}
+    p_einasto_stack = {'m':-0.01, 'A':63.2, 'b':431.48, 'c0':3.36}
+    p = {'all':p_all, 'relax':p_relax, 'nfw_stack':p_nfw_stack, 'einasto_stack':p_einasto_stack}
     
     m = p[fit]['m']
     A = p[fit]['A']

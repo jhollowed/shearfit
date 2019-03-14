@@ -8,9 +8,7 @@ import pdb
 x = (np.random.rand(50)-0.5) * 6
 y = (np.random.rand(50)-0.5) * 6
 r = np.linalg.norm([x, y], axis=0)
-
 zs = (np.random.rand(len(r))*0.5) + 0.8
-#zs = np.ones(len(r))*1.0
 
 # place lens
 zl = 0.8
@@ -18,12 +16,21 @@ test_lens = lens(zl)
 test_lens.set_background(x, y, zs)
 sc = test_lens.calc_sigma_crit()
 
-# calc shears
+# let's assign all the sources with perfect NFW tang. shears, and add some noise (0-20%)
 r200 = 2.0
 c = 3.0
 prof = NFW(r200, c, zl)
-ds = prof.delta_sigma(r)
-y = ds/sc
+ds_true = prof.delta_sigma(np.linspace(min(r), max(r), 1000)) 
+
+ds_data = prof.delta_sigma(r)
+y_clean = ds/sc
+noise_data = np.random.rand(len(r)) * (np.mean(y_data) * 0.33)
+y_data = y_clean * noise_data
+
+# now let's go backward and fit these augmented shears to an NFW profile
+
+
+
 
 # vis shears 
 rorder = np.argsort(r)

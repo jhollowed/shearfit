@@ -3,6 +3,7 @@ import astropy.units as units
 import astropy.constants as const
 from astropy.cosmology import WMAP7 as cosmo
 
+
 class lens():
     
     def __init__(self, zl):
@@ -23,7 +24,7 @@ class lens():
         '''
         Defines and assigns background souce data vectors to attributes of the lens object, 
         including the angular positions, redshifts, and projected comoving distances from 
-        the lens center.
+        the lens center in Mpc.
 
         :param theta: the lens-centric azimuthal angular coordinate, in arcseconds
         :param phi: the lens-centric coaltitude angular coordinate, in arcseconds
@@ -43,7 +44,19 @@ class lens():
 
 
     def get_background(self):
-        return [self.bg_theta, self.bg_phi, self.zs]
+        '''
+        Returns the source population data vectors to the caller, as a list. 
+
+        :return: A list of the source population data vectors (numpy arrays), as 
+                 [theta, phi, r, zs], where theta and phi are the halo-centric angular
+                 positions of the sources in arcseconds, r is the halo-centric 
+                 projected radial distance of each source in Mpc, and zs are the source
+                 redshifts
+        :rettype: list of float arrays
+        '''
+
+        return [((180/np.pi) * self.bg_theta) * 3600, 
+                ((180/np.pi) * self.bg_phi) * 3600, self.r, self.zs]
 
 
     def calc_sigma_crit(self, zs=None):
@@ -60,7 +73,7 @@ class lens():
         
         if(zs is None): zs = self.zs
 
-        # unit conversion factors
+        # unit conversions and scale factors
         m_per_mpc = units.Mpc.to('m')
         s_per_gyr = units.Gyr.to('s')
         kg_per_msun = const.M_sun.value
