@@ -1,7 +1,7 @@
 # import package classes and utility functions
-from pysrc import cluster
-from pysrc.analytic_profiles import NFW_shear_profile
-from pysrc.mass_concentration import child2018
+from gammaProf import cluster
+from gammaProf.analytic_profiles import NFW_shear_profile
+from gammaProf.mass_concentration import child2018
 
 # define attributes
 __version__ = '0.1'

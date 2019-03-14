@@ -6,22 +6,30 @@ import pdb
 
 '''
 This module contains a collection of ananlytic halo profile forms (currently just NFW), which 
-return a prediction for the average tangential shear as a function of halocentric projected radius
+return a prediction for the induced source tangential shear by the lens, as a function of halocentric 
+projected radius. Specifically, the scaled tang. shear ΔΣ = γ_t * Σ_c is returned, which is a constant
+for any identical lens, regardless of lens and source redshifts. Fitting the profile to data requires
+removing this scaling (or equivalently, scaling galaxy redshifts), which should be done through the 
+cluster class interface in cluster.py
 
 To add a profile, simply compute the projected surface mass density by integrating the 3d density
-profile along th line of sight, and then compute the shear prediction by scaling delta_sigma by 
+profile along the line of sight, and then compute the shear prediction by scaling delta_sigma by 
 the critical surface mass density, sigma_c. For details, see Wright & Brainerd, which provides the
 implementation that is used below for the NFW profile
 '''
 
-class NFW_shear_profile():
+class NFW():
 
-    def __init__(self, r200c, c, cosmo=cosmo):
+    def __init__(self, r200c, c, zl, cosmo=cosmo):
         '''
+        This class computes the analytic tangential shear profile prediction, assuming an NFW lens
+
         :param r200c the radius containing mass m200c, or an average density of 200*rho_crit
         :param c: the concentration
+        :param zl: the source redshift
         :param cosmo: an astropy cosmology object
-
+        :return: None
+        
         :type r200c: float
         :type c: float
         :type cosmo: object
@@ -30,6 +38,7 @@ class NFW_shear_profile():
         self.rs = r200c / c
         self.r200c = r200c
         self.c = c
+        self.zl = zl
         self.cosmo = cosmo
 
 
@@ -37,6 +46,9 @@ class NFW_shear_profile():
         '''
         Computes the NFW prediction for the reduced shear g at the scaled radii x 
         (Eq. 14 of Wright & Brainerd 1999, with the scaling term removed)
+
+        :return: the piecewise reduced shear g(x)
+        :rettype: float array
         '''
      
         g1 = lambda x: (8.*np.arctanh(np.sqrt((1-x)/(1+x)))) / (x**2*np.sqrt(1-x**2)) +  \
@@ -61,42 +73,36 @@ class NFW_shear_profile():
         return reduced_profile
 
 
-    def scaled_prediction(self, r, zs, zl):
+    def delta_sigma(self, r):
         '''
-        Computes the predicted tangential shear profile for an NFW lens, given sources at projected radii r, 
-        and redshifts zs.
+        Computes ΔΣ for an NFW lens, given sources at projected comoving radii r. This function does not perform
+        the final scaling by Σ_critical, which would result in the tangential shear γ_t = ΔΣ/Σ_c; ΔΣ, rather, 
+        is the same for an identical lens, regradless of the lens or soure redshifts. Use the methods provided
+        in gammaProf.cluster.lens to perform the scaling and fit to data.
         
-        :param r: projected radius relative to the center of the lens, per source; r = D_l*(theta^2 + phi^2)^(1/2)
+        :param r: comoving projected radius relative to the center of the lens, per source; 
+                  r = D_l*(theta^2 + phi^2)^(1/2) 
         :param zs: source redshifts
         :param zl: lens redshift
+        :return: the modified surface density ΔΣ, in M_sun/pc^2
         
         :type r: array-like
         :type zs: float or array-like
         :type zl: float
+        :rettype: float array
         '''
 
         self.x = r / self.rs
 
-        # m and cm per Mpc
-        m_per_mpc = units.Mpc.to('m')
-        cm_per_mpc = units.Mpc.to('cm')
-        s_per_gyr = units.Gyr.to('s')
+        # unit conversion factors
+        cm_per_pc = units.pc.to('cm')
         kg_per_msun = const.M_sun.value
 
-        # delta-c NFW param, 
-        # critical density pc in M_sun Mpc^-3, 
-        # G in Mpc^3 M_sun^-1 Gyr^-2, 
-        # speed of light C in Mpc Gyr^-1
-        # critical surface mass density Sc
-        # angular diameter distance to lens Dl and source Ds in Mpc
-        dc = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
-        pc = cosmo.critical_density(zl).value * (cm_per_mpc**3 / (kg_per_msun*1000))
-        G = const.G.value * ((s_per_gyr**2 * kg_per_msun)/m_per_mpc**3)
-        C = const.c.value * (s_per_gyr/m_per_mpc)
-        Ds = cosmo.angular_diameter_distance(zs).value
-        Dl = cosmo.angular_diameter_distance(zl).value
-        Dls = Ds - Dl
-        Sc = C**2/(4*np.pi*G) * (Ds)/(Dl*Dls)
-        
-        profile = (self.rs*dc*pc) / Sc * self._g()
-        return profile
+        # δ_c NFW param, 
+        # critical density ρ_c in M_sun Mpc^-3,
+        # modified surface density ΔΣ
+        δ_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
+        ρ_c = cosmo.critical_density(self.zl).value * (cm_per_pc**3 / (kg_per_msun*1000))
+        ΔΣ = (self.rs*δ_c*ρ_c) * self._g()
+
+        return ΔΣ
