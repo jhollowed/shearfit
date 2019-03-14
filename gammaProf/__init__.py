@@ -1,6 +1,6 @@
 # import package classes and utility functions
-from gammaProf import cluster
-from gammaProf.analytic_profiles import NFW_shear_profile
+from gammaProf.lens import lens
+from gammaProf.analytic_profiles import NFW
 from gammaProf.mass_concentration import child2018
 
 # define attributes
