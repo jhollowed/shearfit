@@ -52,12 +52,12 @@ class NFW():
         '''
      
         g1 = lambda x: (8.*np.arctanh(np.sqrt((1-x)/(1+x)))) / (x**2*np.sqrt(1-x**2)) +  \
-                        4./x**2*np.log(x/2) - 2/(x**2-1) + \
-                       (4.*np.arctanh(np.sqrt((1-x)/(1+x))) / ((x**2 - 1)*(1-x**2)**(1/2)))
+                   4./x**2*np.log(x/2) - 2/(x**2-1) + \
+                  (4.*np.arctanh(np.sqrt((1-x)/(1+x))) / ((x**2 - 1)*(1-x**2)**(1/2)))
         
         g2 = lambda x: (8.*np.arctan(np.sqrt((x-1)/(1+x)))) / (x**2*np.sqrt(x**2-1)) + \
-                        4./x**2*np.log(x/2) - 2/(x**2-1) + \
-                       (4.*np.arctan(np.sqrt((x-1)/(1+x))) / (x**2 - 1)**(3/2))
+                   4./x**2*np.log(x/2) - 2/(x**2-1) + \
+                  (4.*np.arctan(np.sqrt((x-1)/(1+x))) / (x**2 - 1)**(3/2))
         
         # construct masks for piecewise function
 
