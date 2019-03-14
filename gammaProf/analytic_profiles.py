@@ -95,14 +95,14 @@ class NFW():
         self.x = r / self.rs
 
         # unit conversion factors
-        cm_per_pc = units.pc.to('cm')
+        cm_per_Mpc = units.Mpc.to('cm')
         kg_per_msun = const.M_sun.value
 
         # δ_c NFW param, 
         # critical density ρ_c in M_sun Mpc^-3,
-        # modified surface density ΔΣ
+        # modified surface density ΔΣ; rightmost factor scales Mpc to pc
         δ_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
-        ρ_c = cosmo.critical_density(self.zl).value * (cm_per_pc**3 / (kg_per_msun*1000))
-        ΔΣ = (self.rs*δ_c*ρ_c) * self._g()
+        ρ_c = cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
+        ΔΣ = ((self.rs*δ_c*ρ_c) * self._g()) * 1e-12
 
         return ΔΣ

@@ -15,7 +15,7 @@ class lens():
         :type zl: float
         '''
 
-        self.zl = z
+        self.zl = zl
         self.has_sources = False
 
 
@@ -36,7 +36,7 @@ class lens():
 
         self.bg_theta = (np.pi/180) * (theta/3600)
         self.bg_phi = (np.pi/180) * (phi/3600)
-        self.zs = z
+        self.zs = zs
         self.r = np.linalg.norm([np.tan(self.bg_theta), np.tan(self.bg_phi)], axis=0) * \
                  cosmo.comoving_distance(zs)
         self.has_sources = True
@@ -64,8 +64,8 @@ class lens():
         m_per_mpc = units.Mpc.to('m')
         s_per_gyr = units.Gyr.to('s')
         kg_per_msun = const.M_sun.value
-        a_zl = cosmo.scale_factor(zl).value
-        a_zs = cosmo.scale_factor(zs).value
+        a_zl = cosmo.scale_factor(self.zl)
+        a_zs = cosmo.scale_factor(self.zs)
 
         # G in comoving Mpc^3 M_sun^-1 Gyr^-2,
         # speed of light C in comoving Mpc Gyr^-1
@@ -77,7 +77,7 @@ class lens():
         Dl = cosmo.angular_diameter_distance(self.zl).value * (1/a_zl)
         Dls = Ds - Dl
         
-        # critical surface mass density Σ_c (rightmost factor scales to M_sun/pc^2)
-        Σ_c = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls)) * 1e-6
+        # critical surface mass density Σ_c; rightmost factor scales to Mpc to pc
+        Σ_c = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls)) * 1e-12
 
         return Σ_c 
