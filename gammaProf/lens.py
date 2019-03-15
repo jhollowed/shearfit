@@ -117,7 +117,7 @@ class lens():
         Returns
         -------
         Σ_c : float or float array 
-            The critical surface density, :math:`\\Sigma_\\text{c}`, in :math:`M_\\odot/\\text{pc}^2` 
+            The critical surface density, :math:`\\Sigma_\\text{c}`, in :math:`M_{\\odot}/\\text{pc}^2` 
         '''
         
         if(zs is None): zs = self.zs

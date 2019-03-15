@@ -108,7 +108,7 @@ class NFW():
         Returns
         -------
         ΔΣ : float array
-            the modified surface density :math:`\\Delta\\Sigma`, in :math:`M_\\odot/\\text{pc}^2` 
+            the modified surface density :math:`\\Delta\\Sigma`, in :math:`M_{\\odot}/\\text{pc}^2` 
         """
 
         self.x = r / self.rs

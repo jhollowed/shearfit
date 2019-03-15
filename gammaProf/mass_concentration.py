@@ -13,7 +13,7 @@ def child2018(m200c, fit='nfw'):
     Parameters
     ----------
     m200c : float 
-        The halo's mass :math:`M_{200\\text{c}}` in units of :math:`M_\\\odot h^{-1}`
+        The halo's mass :math:`M_{200\\text{c}}` in units of :math:`M_{\\odot} h^{-1}`
     fit : string
         The set of fit parameters to use (Table 1 in Child+2018); options are
         `'all'`, `'relaxed'`, `'nfw_stack'`, or `'einasto_stack'`
