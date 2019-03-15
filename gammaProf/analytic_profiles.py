@@ -1,7 +1,7 @@
 import numpy as np
 import astropy.units as units
 import astropy.constants as const
-from astropy.cosmology import WMAP7 as cosmo
+from astropy.cosmology import WMAP7
 import pdb
 
 '''
@@ -19,37 +19,54 @@ implementation that is used below for the NFW profile
 '''
 
 class NFW():
-
-    def __init__(self, r200c, c, zl, cosmo=cosmo):
-        '''
+    def __init__(self, r200c, c, zl, cosmo = WMAP7):
+        """
         This class computes the analytic tangential shear profile prediction, assuming an NFW lens
+        
+        Parameters
+        ----------
+        r200c : float
+            the radius containing mass m200c, or an average density of 200*rho_crit
+        c : float 
+            the concentration
+        zl : float 
+            the source redshift
+        cosmo : object, optional
+            an astropy cosmology object (defaults to WMAP7)
+        
+        Attributes
+        ----------
+        rs : float
+            the scale radius, `r200c / c`
+        x : float array
+            the normalized radii `r/rs` for any input `r` (not initialized until `delta_sigma()` is called) 
 
-        :param r200c the radius containing mass m200c, or an average density of 200*rho_crit
-        :param c: the concentration
-        :param zl: the source redshift
-        :param cosmo: an astropy cosmology object
-        :return: None
+        Methods
+        -------
+        delta_sigma(r)
+            Computes ΔΣ for an NFW lens, given sources at projected comoving radii r
+            
         
-        :type r200c: float
-        :type c: float
-        :type cosmo: object
-        '''
+        """
         
-        self.rs = r200c / c
         self.r200c = r200c
         self.c = c
         self.zl = zl
         self.cosmo = cosmo
+        self.rs = r200c / c
+        self.x = None
 
 
     def _g(self):
-        '''
+        """
         Computes the NFW prediction for the reduced shear g at the scaled radii x 
         (Eq. 14 of Wright & Brainerd 1999, with the scaling term removed)
-
-        :return: the piecewise reduced shear g(x)
-        :rettype: float array
-        '''
+        
+        Returns
+        -------
+        reduced_profile : float array
+            the piecewise reduced shear :math:`g(x)`
+        """
      
         g1 = lambda x: (8.*np.arctanh(np.sqrt((1-x)/(1+x)))) / (x**2*np.sqrt(1-x**2)) +  \
                    4./x**2*np.log(x/2) - 2/(x**2-1) + \
@@ -74,23 +91,25 @@ class NFW():
 
 
     def delta_sigma(self, r):
-        '''
-        Computes ΔΣ for an NFW lens, given sources at projected comoving radii r. This function does not perform
-        the final scaling by Σ_critical, which would result in the tangential shear γ_t = ΔΣ/Σ_c; ΔΣ, rather, 
-        is the same for an identical lens, regradless of the lens or soure redshifts. Use the methods provided
-        in gammaProf.cluster.lens to perform the scaling and fit to data.
+        """
+        Computes :math:`\\delta\\Sigma` at projected comoving radii `r`, for an NFW lens. 
+        This function does not perform the final scaling by :math:`\\Sigma_{\\text{critical}}`, 
+        which would result in the tangential shear :math:`\\gamma_T = \\Delta\\Sigma/\\Sigma_\\text{c}`; 
+        :math:`\\Delta\\Sigma`, rather, is the same for an identical lens, regradless of the lens or 
+        soure redshifts. Use the methods provided in gammaProf.cluster.lens to perform the scaling and 
+        fit to data.
         
-        :param r: comoving projected radius relative to the center of the lens, per source; 
-                  r = D_l*(theta^2 + phi^2)^(1/2) 
-        :param zs: source redshifts
-        :param zl: lens redshift
-        :return: the modified surface density ΔΣ, in M_sun/pc^2
+        Parameters
+        ----------
+        r : float array
+            comoving projected radius relative to the center of the lens; 
+            :math:`r = D_l\\left[theta^2 + phi^2\\right]^{\\frac{1}{2}}`
         
-        :type r: array-like
-        :type zs: float or array-like
-        :type zl: float
-        :rettype: float array
-        '''
+        Returns
+        -------
+        ΔΣ : float array
+            the modified surface density :math:`\\Delta\\Sigma`, in :math:`M_\\odot/\\text{pc}^2` 
+        """
 
         self.x = r / self.rs
 

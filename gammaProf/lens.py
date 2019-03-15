@@ -7,17 +7,55 @@ from astropy.cosmology import WMAP7 as cosmo
 class lens():
     
     def __init__(self, zl):
-        '''
+        """
         This class constructs a 'lens' object, which contains data vectors for the background sources
         of a given lens, and methods to perform computations on that data.
 
-        :param zl: the redshift of the lens
-        :return: None
-        :type zl: float
-        '''
+        Parameters
+        ----------
+        zl : float
+            the redshift of the lens
+
+        Returns
+        -------
+        None
+
+        Attributes
+        ----------
+        zl : float
+            the redshift of the lens
+        has_sources : boolean
+            whether or not the background population has been set for this instance
+            (`False` until `set_background()` is called)
+        bg_theta : float array
+            the lens-centric azimuthal angular coordinate, in arcseconds
+            (uninitialized until `set_background()` is called)
+        bg_phi : float array
+            the lens-centric coaltitude angular coordinate, in arcseconds
+            (uninitialized until `set_background()` is called)
+        zs : float array
+            redshifts of background sources
+            (uninitialized until `set_background()` is called)
+        r : float array
+            projected separation of each source at the redshift `zl`, in comoving Mpc
+            (uninitialized until `set_background()` is called)
+
+        Methods
+        -------
+        set_background(theta, phi, zs)
+            Defines and assigns background souce data vectors to attributes of the lens object
+        get_background()
+            Returns the source population data vectors to the caller, as a list
+        calc_sigma_crit()
+            Computes the critical surface density at the redshift `zl`
+        """
 
         self.zl = zl
         self.has_sources = False
+        self.bg_theta = None
+        self.bg_phi = None
+        self.zs = None
+        self.r = None
 
 
     def set_background(self, theta, phi, zs):
@@ -25,14 +63,19 @@ class lens():
         Defines and assigns background souce data vectors to attributes of the lens object, 
         including the angular positions, redshifts, and projected comoving distances from 
         the lens center in Mpc.
-
-        :param theta: the lens-centric azimuthal angular coordinate, in arcseconds
-        :param phi: the lens-centric coaltitude angular coordinate, in arcseconds
-        :zs: the source redshifts
-        :return: None
-        :type theta: float array
-        :type phi: float array
-        :type zs: float array
+        
+        Parameters
+        ----------
+        theta : float array
+            the lens-centric azimuthal angular coordinate, in arcseconds
+        phi : float_array
+            the lens-centric coaltitude angular coordinate, in arcseconds
+        zs : float array
+            the source redshifts
+        
+        Returns
+        -------
+        None
         '''
 
         self.bg_theta = (np.pi/180) * (theta/3600)
@@ -47,12 +90,14 @@ class lens():
         '''
         Returns the source population data vectors to the caller, as a list. 
 
-        :return: A list of the source population data vectors (numpy arrays), as 
-                 [theta, phi, r, zs], where theta and phi are the halo-centric angular
-                 positions of the sources in arcseconds, r is the halo-centric 
-                 projected radial distance of each source in Mpc, and zs are the source
-                 redshifts
-        :rettype: list of float arrays
+        Returns
+        -------
+        list of numpy arrays
+            A list of the source population data vectors (numpy arrays), as 
+            [theta, phi, r, zs], where theta and phi are the halo-centric angular
+            positions of the sources in arcseconds, r is the halo-centric 
+            projected radial distance of each source in Mpc, and zs are the source
+            redshifts
         '''
 
         return [((180/np.pi) * self.bg_theta) * 3600, 
@@ -63,12 +108,16 @@ class lens():
         '''
         Computes Σ_c, the critical surface density, in M_sun/pc^2, assuming a flat cosmology
 
-        :param zs: optionally, a source redshift (array). If None (default), then use background
-                   source redshifts given at object instatiation
-        :return: Σ_c, the critical surface density, in M_sun/pc^2
+        Parameters
+        ----------
+        zs : float or float array, optional
+            A source redshift (or array of redshifts). If None (default), then use background
+            source redshifts given at object instatiation, `self.zs`
         
-        :type zs: float, float array, or None
-        :rettype: float or float array
+        Returns
+        -------
+        Σ_c : float or float array 
+            The critical surface density, :math:`\\Sigma_\\text{c}`, in :math:`M_\\odot/\\text{pc}^2` 
         '''
         
         if(zs is None): zs = self.zs
