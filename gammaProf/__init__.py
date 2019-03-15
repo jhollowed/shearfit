@@ -1,5 +1,5 @@
 # import package classes and utility functions
-from gammaProf.lens import lens
+from gammaProf.lensing_system import obs_lens_system
 from gammaProf.analytic_profiles import NFW
 from gammaProf.mass_concentration import child2018
 

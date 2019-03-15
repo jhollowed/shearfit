@@ -1,7 +1,7 @@
 import numpy as np
 from analytic_profiles import NFW
 import matplotlib.pyplot as plt
-from lens import lens
+from lensing_system import obs_lens_system
 import pdb
 
 # randomly place sources
@@ -12,7 +12,7 @@ zs = (np.random.rand(len(r))*0.5) + 0.8
 
 # place lens
 zl = 0.8
-test_lens = lens(zl)
+test_lens = obs_lens_system(zl)
 test_lens.set_background(x, y, zs)
 sc = test_lens.calc_sigma_crit()
 

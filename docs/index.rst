@@ -6,7 +6,7 @@ Contents:
 .. autoclass:: gammaProf.analytic_profiles.NFW
    :members:
 
-.. autoclass:: gammaProf.lens
+.. autoclass:: gammaProf.lensing_system.obs_lens_system
    :members:
 
 .. automodule:: gammaProf.mass_concentration

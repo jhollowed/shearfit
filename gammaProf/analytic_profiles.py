@@ -18,38 +18,35 @@ the critical surface mass density, sigma_c. For details, see Wright & Brainerd, 
 implementation that is used below for the NFW profile
 '''
 
-class NFW():
-    def __init__(self, r200c, c, zl, cosmo = WMAP7):
-        """
-        This class computes the analytic tangential shear profile prediction, assuming an NFW lens
-        
-        Parameters
-        ----------
-        r200c : float
-            the radius containing mass m200c, or an average density of 200*rho_crit
-        c : float 
-            the concentration
-        zl : float 
-            the source redshift
-        cosmo : object, optional
-            an astropy cosmology object (defaults to WMAP7)
-        
-        Attributes
-        ----------
-        rs : float
-            the scale radius, `r200c / c`
-        x : float array
-            the normalized radii `r/rs` for any input `r` (not initialized until `delta_sigma()` is called) 
+class NFW:
+    """
+    This class computes the analytic tangential shear profile prediction, assuming an NFW lens
+    
+    Parameters
+    ----------
+    r200c : float
+        the radius containing mass m200c, or an average density of 200*rho_crit
+    c : float 
+        the concentration
+    zl : float 
+        the source redshift
+    cosmo : object, optional
+        an astropy cosmology object (defaults to WMAP7)
+    
+    Attributes
+    ----------
+    rs : float
+        the scale radius, `r200c / c`
+    x : float array
+        the normalized radii `r/rs` for any input `r` (not initialized until `delta_sigma()` is called) 
 
-        Methods
-        -------
-        delta_sigma(r)
-            Computes :math:`\\Delta\\Sigma(r)` for an NFW lens, given sources at projected comoving radii 
-            :math:`r`
-            
-        
-        """
-        
+    Methods
+    -------
+    delta_sigma(r)
+        Computes :math:`\\Delta\\Sigma(r)` for an NFW lens, given sources at projected comoving radii 
+        :math:`r` 
+    """
+    def __init__(self, r200c, c, zl, cosmo = WMAP7): 
         self.r200c = r200c
         self.c = c
         self.zl = zl
@@ -104,7 +101,7 @@ class NFW():
         ----------
         r : float array
             comoving projected radius relative to the center of the lens; 
-            :math:`r = D_l\\sqrt{\\theta^2 + \\phi^2}`
+            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`
         
         Returns
         -------
