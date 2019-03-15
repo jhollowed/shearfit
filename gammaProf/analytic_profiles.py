@@ -44,7 +44,8 @@ class NFW():
         Methods
         -------
         delta_sigma(r)
-            Computes ΔΣ for an NFW lens, given sources at projected comoving radii r
+            Computes :math:`\\Delta\\Sigma(r)` for an NFW lens, given sources at projected comoving radii 
+            :math:`r`
             
         
         """
@@ -92,23 +93,23 @@ class NFW():
 
     def delta_sigma(self, r):
         """
-        Computes :math:`\\delta\\Sigma` at projected comoving radii `r`, for an NFW lens. 
+        Computes :math:`\\Delta\\Sigma` at projected comoving radii `r`, for an NFW lens. 
         This function does not perform the final scaling by :math:`\\Sigma_{\\text{critical}}`, 
         which would result in the tangential shear :math:`\\gamma_T = \\Delta\\Sigma/\\Sigma_\\text{c}`; 
         :math:`\\Delta\\Sigma`, rather, is the same for an identical lens, regradless of the lens or 
-        soure redshifts. Use the methods provided in gammaProf.cluster.lens to perform the scaling and 
+        soure redshifts. Use the methods provided in `gammaProf.cluster.lens` to perform the scaling and 
         fit to data.
         
         Parameters
         ----------
         r : float array
             comoving projected radius relative to the center of the lens; 
-            :math:`r = D_l\\left[theta^2 + phi^2\\right]^{\\frac{1}{2}}`
+            :math:`r = D_l\\sqrt{\\theta^2 + \\phi^2}`
         
         Returns
         -------
-        ΔΣ : float array
-            the modified surface density :math:`\\Delta\\Sigma`, in :math:`M_{\\odot}/\\text{pc}^2` 
+        dSigma : float array
+            the modified surface density :math:`\\Delta\\Sigma` in :math:`M_{\\odot}/\\text{pc}^2` 
         """
 
         self.x = r / self.rs
@@ -117,11 +118,11 @@ class NFW():
         cm_per_Mpc = units.Mpc.to('cm')
         kg_per_msun = const.M_sun.value
 
-        # δ_c NFW param, 
-        # critical density ρ_c in M_sun Mpc^-3,
-        # modified surface density ΔΣ; rightmost factor scales Mpc to pc
-        δ_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
-        ρ_c = cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
-        ΔΣ = ((self.rs*δ_c*ρ_c) * self._g()) * 1e-12
+        # del_c NFW param, 
+        # critical density rho_crit in M_sun Mpc^-3,
+        # modified surface density DSigma; rightmost factor scales Mpc to pc
+        del_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
+        rho_crit = cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
+        dSigma = ((self.rs*del_c*rho_crit) * self._g()) * 1e-12
 
-        return ΔΣ
+        return dSigma

@@ -106,7 +106,8 @@ class lens():
 
     def calc_sigma_crit(self, zs=None):
         '''
-        Computes Σ_c, the critical surface density, in M_sun/pc^2, assuming a flat cosmology
+        Computes :math:`\\Sigma_\\text{c}`, the critical surface density, in 
+        :math:`M_{\\odot}/\\text{pc}^2`, assuming a flat cosmology
 
         Parameters
         ----------
@@ -116,7 +117,7 @@ class lens():
         
         Returns
         -------
-        Σ_c : float or float array 
+        Sigma_crit : float or float array 
             The critical surface density, :math:`\\Sigma_\\text{c}`, in :math:`M_{\\odot}/\\text{pc}^2` 
         '''
         
@@ -140,6 +141,6 @@ class lens():
         Dls = Ds - Dl
         
         # critical surface mass density Σ_c; rightmost factor scales to Mpc to pc
-        Σ_c = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls)) * 1e-12
+        Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls)) * 1e-12
 
-        return Σ_c 
+        return Sigma_crit 

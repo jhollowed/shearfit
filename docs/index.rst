@@ -3,10 +3,10 @@ Welcome to gammaProf's documentation!
 
 Contents:
 
-.. automodule:: gammaProf.analytic_profiles
+.. autoclass:: gammaProf.analytic_profiles.NFW
    :members:
 
-.. automodule:: gammaProf.lens
+.. autoclass:: gammaProf.lens
    :members:
 
 .. automodule:: gammaProf.mass_concentration
