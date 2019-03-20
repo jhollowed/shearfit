@@ -1,7 +1,7 @@
 import numpy as np
 import astropy.units as units
 import astropy.constants as const
-from astropy.cosmology import WMAP7 as cosmo
+from astropy.cosmology import WMAP7
 
 class obs_lens_system:
     """
@@ -13,6 +13,8 @@ class obs_lens_system:
     ----------
     zl : float
         the redshift of the lens
+    cosmo : object, optional
+        an astropy cosmology object (defaults to WMAP7)
 
     Attributes
     ----------
@@ -50,17 +52,26 @@ class obs_lens_system:
         Computes the critical surface density at the redshift `zl`
     """
     
-    def __init__(self, zl):
+    def __init__(self, zl, cosmo=WMAP7):
         self.zl = zl
-        self.has_sources = False
+        self.cosmo = cosmo
+        self._has_sources = False
         self.bg_theta1 = None
         self.bg_theta2 = None
         self.zs = None
-        self.r = None
+        self._r = None
         self.y1 = None
         self.y2 = None
-        self.yt = None
+        self._yt = None
 
+
+    def _check_sources(self):
+        """
+        Checks that set_background has been called (intended to be called before any
+        operations on the attributes initialized by set_background())
+        """
+        assert(self._has_sources), 'sources undefined; first run set_background()'
+        
 
     def set_background(self, theta1, theta2, zs, y1, y2):
         '''
@@ -89,18 +100,30 @@ class obs_lens_system:
         self.bg_theta1 = (np.pi/180) * (theta1/3600)
         self.bg_theta2 = (np.pi/180) * (theta2/3600)
         self.zs = zs
-        self.r = np.linalg.norm([np.tan(self.bg_theta1), np.tan(self.bg_theta2)], axis=0) * \
-                 cosmo.comoving_distance(zs)
-        
-        # compute tangential shear yt
-        phi = np.arctan(theta2/theta1)
         self.y1 = y1
         self.y2 = y2
-        self.yt = -(y1 * np.cos(2*phi) + y2*np.sin(2*phi))
+        self._has_sources = True
+        self._comp_bg_quantities()
 
-        self.has_sources = True
 
+    def _comp_bg_quantities(self):
+        """
+        Computes background source quantites that depend on the data vectors initialized in 
+        set_baclground (this function meant to be called from the setter method of each 
+        source property)
+        """
 
+        self._check_sources()
+        
+        # compute halo-centric projected radial separation of each source, in Mpc
+        self._r = np.linalg.norm([np.tan(self.bg_theta1), np.tan(self.bg_theta2)], axis=0) * \
+                                  self.cosmo.comoving_distance(zs)
+        
+        # compute tangential shear yt
+        self._phi = np.arctan(theta2/theta1)
+        self._yt = -(y1 * np.cos(2*phi) + y2*np.sin(2*phi))
+    
+    
     def get_background(self):
         '''
         Returns the source population data vectors to the caller, as a list. 
@@ -115,10 +138,54 @@ class obs_lens_system:
             the source redshifts, y1 and y2 are the shear components of the sources, 
             and yt are the source tangential shears
         '''
-
+        
+        self._check_sources() 
         return [((180/np.pi) * self.bg_theta1) * 3600, 
                 ((180/np.pi) * self.bg_theta2) * 3600, 
-                self.r, self.zs, selfy1, self.y2, self.yt]
+                self._r, self.zs, self.y1, self.y2, self._yt]
+    
+
+    @property
+    def cosmo(self): return self.cosmo
+    @cosmo.setter
+    def cosmo(self, value): 
+        self.cosmo = value
+        self._comp_bg_quantities()
+
+    @property
+    def theta1(self): return self.theta1
+    @theta1.setter
+    def theta1(self, value): 
+        self.theta1 = value
+        self._comp_bg_quantities()
+    
+    @property
+    def theta2(self): return self.theta2
+    @theta2.setter
+    def theta2(self, value): 
+        self.theta2 = value
+        self._comp_bg_quantities()
+    
+    @property
+    def zs(self): return self.zs
+    @theta1.setter
+    def zs(self, value): 
+        self.zs = value
+        self._comp_bg_quantities()
+    
+    @property
+    def y1(self): return self.y1
+    @y1.setter
+    def y1(self, value): 
+        self.y1 = value
+        self._comp_bg_quantities()
+    
+    @property
+    def y2(self): return self.y2
+    @y2.setter
+    def y2(self, value): 
+        self.y2 = value
+        self._comp_bg_quantities()
 
 
     def calc_sigma_crit(self, zs=None):
@@ -139,6 +206,7 @@ class obs_lens_system:
             The critical surface density, :math:`\\Sigma_\\text{c}`, in :math:`M_{\\odot}/\\text{pc}^2` 
         '''
         
+        self._check_sources()
         if(zs is None): zs = self.zs
 
         # unit conversions and scale factors
@@ -146,7 +214,7 @@ class obs_lens_system:
         s_per_gyr = units.Gyr.to('s')
         kg_per_msun = const.M_sun.value
         pc_per_Mpc = 1e12
-        a_zl = cosmo.scale_factor(self.zl)
+        a_zl = self.cosmo.scale_factor(self.zl)
 
         # G in comoving Mpc^3 M_sun^-1 Gyr^-2,
         # speed of light C in comoving Mpc Gyr^-1
@@ -154,8 +222,8 @@ class obs_lens_system:
         # --> warning: this assumes a flat cosmology; or that angular diamter distance = proper distance
         G = const.G.value * ((s_per_gyr**2 * kg_per_msun)/m_per_mpc**3)
         C = const.c.value * (s_per_gyr/m_per_mpc)
-        Ds = cosmo.angular_diameter_distance(zs).value
-        Dl = cosmo.angular_diameter_distance(self.zl).value
+        Ds = self.cosmo.angular_diameter_distance(zs).value
+        Dl = self.cosmo.angular_diameter_distance(self.zl).value
         Dls = Ds - Dl
         
         # critical surface mass density Σ_c; 

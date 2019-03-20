@@ -53,43 +53,26 @@ class NFW:
         Returns the NFW radius and concentration parameters to the caller
     """
     def __init__(self, r200c, c, zl, cosmo=WMAP7): 
-        self.__r200c = r200c
-        self.__c = c
-        self.__zl = zl
-        self.__cosmo = cosmo
-        self.__rs = r200c / c
-        self.__x = None
+        self.r200c = r200c
+        self.c = c
+        self.zl = zl
+        self.cosmo = cosmo
+        self._rs = r200c / c
+        self._x = None
 
-
-    def set_params(self, r200c=self.__r200c, c=self.__c)
-        """
-        Setter function for the caller to update NFW parameters :math:`R_{200c}` and :math:`c`
-
-        Parameters
-        ----------
-        r200c : float, optional
-            the radius containing mass :math:`M_{200c}`, or an average density of 
-            :math:`200\\rho_\\text{crit}`
-        c : float, optional 
-            the concentration
-        """
-        
-        self.__r200c = r200c
-        self.__c = c
+    @property
+    def r200c(self): return self.r200c
+    @r200c.setter
+    def r200c(self, value): 
+        self.r200c = value
+        self._rs = self.r200c / self.c
     
-
-    def get_params(self)
-        """
-        Getter function for the caller to retrieve NFW parameters r200c and c
-
-        Return
-        ------
-        2-element list
-            the radius (`float`) containing mass :math:`M_{200c}`, or an average density of 
-            :math:`200\\rho_\\text{crit}`, followed by the concentration (`float`)
-        """
-        
-        return [self.__r200c, self.__c]
+    @property
+    def c(self): return self.c
+    @r200c.setter
+    def c(self, value): 
+        self.c = value
+        self._rs = self.r200c / self.c
 
 
     def radius_to_mass(self):
@@ -104,11 +87,16 @@ class NFW:
 
 
 
-    def _g(self):
+    def _g(self, x):
         """
         Computes the NFW prediction for the reduced shear g at the scaled radii x 
         (Eq. 14 of Wright & Brainerd 1999, with the scaling term removed)
         
+        Parameters
+        ----------
+        x : float array
+            the normalized radii r/r_s at which to compute the reduced shear g(x)
+
         Returns
         -------
         reduced_profile : float array
@@ -157,7 +145,7 @@ class NFW:
             the modified surface density :math:`\\Delta\\Sigma` in :math:`M_{\\odot}/\\text{pc}^2` 
         """
 
-        self.__x = r / self.__rs
+        x = r / self._rs
 
         # unit conversion factors
         cm_per_Mpc = units.Mpc.to('cm')
@@ -166,8 +154,8 @@ class NFW:
         # del_c NFW param, 
         # critical density rho_crit in M_sun Mpc^-3,
         # modified surface density DSigma; rightmost factor scales Mpc to pc
-        del_c = (200/3) * self.__c**3 / (np.log(1+self.__c) - self.__c/(1+self.__c))
-        rho_crit = self.__cosmo.critical_density(self.__zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
-        dSigma = ((self.__rs*del_c*rho_crit) * self._g()) * 1e-12
+        del_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
+        rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
+        dSigma = ((self._rs*del_c*rho_crit) * self._g(x)) * 1e-12
 
         return dSigma
