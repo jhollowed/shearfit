@@ -84,7 +84,14 @@ class NFW:
         m200c : float
             The halo mass :math:`M_{200c}` in units of :math:`M_\\odot`
         """
+       
+        # critical density in M_sun / Mpc^3
+        cm_per_Mpc = units.Mpc.to('cm')
+        kg_per_msun = const.M_sun.value
+        rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
 
+        m200c = (4/3) * np.pi * self.r200c * rho_crit
+        return m200c
 
 
     def _g(self, x):
@@ -150,12 +157,13 @@ class NFW:
         # unit conversion factors
         cm_per_Mpc = units.Mpc.to('cm')
         kg_per_msun = const.M_sun.value
+        pc_per_Mpc = 1e12
 
         # del_c NFW param, 
         # critical density rho_crit in M_sun Mpc^-3,
         # modified surface density DSigma; rightmost factor scales Mpc to pc
         del_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
         rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
-        dSigma = ((self._rs*del_c*rho_crit) * self._g(x)) * 1e-12
+        dSigma = ((self._rs*del_c*rho_crit) * self._g(x)) / pc_per_Mpc
 
         return dSigma
