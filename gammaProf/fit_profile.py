@@ -99,16 +99,20 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation)
    
     # update the NFW analytical profile object
     if(len(fit_params) > 1):
+        
         # concentration being fitted
         r200c, c = fit_params[0], fit_params[1]
         profile.r200c = r200c
         profile.c = c
+    
     else:
+        
         # concentration modeled from c-M relation
         cM_func = {'child+2018':child+2018}[cM_relation]
         r200c = fit_params[0]
         m200c = profile.radius_to_mass()
         c_new = child2018(m200c)
+        
         profile.r200c = r200c
         profile.c = c_new
     
