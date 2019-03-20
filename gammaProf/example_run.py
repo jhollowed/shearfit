@@ -25,20 +25,27 @@ zl = 0.8
 r200 = 2.0
 c = 3.0
 mock_lens = obs_lens_system(zl)
-mock_lens.set_background(x, y, zs, y1=0, y2=0)
+mock_lens.set_background(x, y, zs, yt = 0)
 sigmaCrit = test_lens.calc_sigma_crit()
 
 # assign all the sources with perfect NFW tangential shears, and add scatter (20% for 1std of pop)
-prof = NFW(r200, c, zl)
-dSigma_true = prof.delta_sigma(np.linspace(min(r), max(r), 1000)) 
-dSigma_data = prof.delta_sigma(r)
+profile = NFW(r200, c, zl)
+dSigma_true = profile.delta_sigma(np.linspace(min(r), max(r), 1000)) 
+dSigma_data = profile.delta_sigma(r)
+
 yt_clean = dSigma_data/sigmaCrit
 noise_data = np.sqrt(0.2) * np.random.randn(len(r))
 y_data = y_clean + (y_clean*noise_data)
+mock_lens.yt = y_data
 
-# now let's go backward and fit these augmented shears to an NFW profile
-res = fit()
+# now let's go backward and fit these augmented shears to the NFW profile we defined above,
+# after scrambling it's parameters, and assume we have rough proiors on the radius and concentration
+profile.r200c = 1.0
+profile.c = 4.5
+res_fit = fit(mock_lens, profile, rad_bounds = [0.5, 4], conc_bounds = [0.5, 6])
 
+# and now do it again, iteratively using a c-M relation instead of fitting for c
+res_cM = fit(mock_lens, profile, rad_bounds = [0.5, 4], cM_relation='child2018')
 
 # vis shears 
 rorder = np.argsort(r)

@@ -42,9 +42,9 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     """
     
     # get the background data, and scale the tangential shear to ΔΣ 
-    [theta1, theta2, r, zs, _, _, yt] = data.get_background()
+    sources = data.get_background()
     Ec = data.calc_sigma_crit()
-    dSigma_data = yt * Ec
+    dSigma_data = sources['yt'] * Ec
 
     # get parameter guesses from initial NFW form
     rad_init = profile.r200c()
