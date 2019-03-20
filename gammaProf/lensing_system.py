@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import astropy.units as units
 import astropy.constants as const
@@ -56,13 +57,15 @@ class obs_lens_system:
         self.zl = zl
         self.cosmo = cosmo
         self._has_sources = False
+        self._has_shear12 = False
         self.bg_theta1 = None
         self.bg_theta2 = None
         self.zs = None
         self._r = None
+        self._phi = None
         self.y1 = None
         self.y2 = None
-        self._yt = None
+        self.yt = None
 
 
     def _check_sources(self):
@@ -73,11 +76,13 @@ class obs_lens_system:
         assert(self._has_sources), 'sources undefined; first run set_background()'
         
 
-    def set_background(self, theta1, theta2, zs, y1, y2):
+    def set_background(self, theta1, theta2, zs, y1=None, y2=None, yt=None):
         '''
         Defines and assigns background souce data vectors to attributes of the lens object, 
         including the angular positions, redshifts, projected comoving distances from 
-        the lens center in Mpc, and shear components.
+        the lens center in Mpc, and shear components. The user should either pass the shear 
+        components `y1` and `y2`, or the tangential shear `yt`; if both or neither are passed, 
+        an exception will be raised
         
         Parameters
         ----------
@@ -87,21 +92,35 @@ class obs_lens_system:
             the source lens-centric coaltitude angular coordinates, in arcseconds
         zs : float array
             the source redshifts
-        y1 : float array
+        y1 : float array, optional
             the shear component :math:`\\gamma_1`
-        y2 : float array
+        y2 : float array, optional
             the shear component :math:`\\gamma_2`
+        yt : float array, optional
+            the tangential shear :math:`\\gamma_T`
         
         Returns
         -------
         None
         '''
 
+        # make sure shear was passed correctly -- either tangenetial, or components, not both
+        # the _has_shear12 attribute will be used to communicate to other methods which usage
+        # has been invoked
+        if((y1 is None and y2 is None and yt is None) or
+           ((y1 is not None or y2 is not None) and yt is not None):
+          raise Exception('Either y1 and y2 must be passed, or yt must be passed, not both.')
+        
+        # initialize source data vectors
         self.bg_theta1 = (np.pi/180) * (theta1/3600)
         self.bg_theta2 = (np.pi/180) * (theta2/3600)
         self.zs = zs
         self.y1 = y1
         self.y2 = y2
+        self.yt = yt
+        
+        # set flags and compute additonal quantities
+        if(yt is None): self._has_shear12 = True
         self._has_sources = True
         self._comp_bg_quantities()
 
@@ -119,9 +138,10 @@ class obs_lens_system:
         self._r = np.linalg.norm([np.tan(self.bg_theta1), np.tan(self.bg_theta2)], axis=0) * \
                                   self.cosmo.comoving_distance(zs)
         
-        # compute tangential shear yt
-        self._phi = np.arctan(theta2/theta1)
-        self._yt = -(y1 * np.cos(2*phi) + y2*np.sin(2*phi))
+        if(self._has_shear12):
+            # compute tangential shear yt
+            self._phi = np.arctan(theta2/theta1)
+            self.yt = -(y1 * np.cos(2*phi) + y2*np.sin(2*phi))
     
     
     def get_background(self):
@@ -130,19 +150,35 @@ class obs_lens_system:
 
         Returns
         -------
-        list of numpy arrays
-            A list of the source population data vectors (numpy arrays), as 
+        bg : 2d numpy array
+            A list of the source population data vectors (2d numpy array), with
+            labeled columns. 
+            If shear components are being used (see docstring for `set_background()`,
+            then the contents of the return array is 
             [theta1, theta2, r, zs, y1, y2, yt], where theta1 and theta2 are the 
             halo-centric angular positions of the sources in arcseconds, r is the 
             halo-centric projected radial distance of each source in Mpc, zs are 
             the source redshifts, y1 and y2 are the shear components of the sources, 
-            and yt are the source tangential shears
+            and yt are the source tangential shears.
+            If only the tangential shear is being used, then y1 and y2 are omitted
         '''
         
-        self._check_sources() 
-        return [((180/np.pi) * self.bg_theta1) * 3600, 
-                ((180/np.pi) * self.bg_theta2) * 3600, 
-                self._r, self.zs, self.y1, self.y2, self._yt]
+        self._check_sources()
+        
+        if(self._has_shear12):
+            bg = np.array([((180/np.pi) * self.bg_theta1) * 3600, 
+                           ((180/np.pi) * self.bg_theta2) * 3600, 
+                           self._r, self.zs, self.y1, self.y2, self.yt], 
+                           dtype = [('theta1',float), ('theta2',float), 
+                                    ('r',float), ('zs',float), 
+                                    ('y1',float), ('y2',float), ('yt',float)])
+        else:
+            bg = np.array([((180/np.pi) * self.bg_theta1) * 3600, 
+                           ((180/np.pi) * self.bg_theta2) * 3600, 
+                           self._r, self.zs, self.yt], 
+                           dtype = [('theta1',float), ('theta2',float), 
+                                    ('r',float), ('zs',float), ('yt',float)])
+        return bg
     
 
     @property
@@ -185,6 +221,19 @@ class obs_lens_system:
     @y2.setter
     def y2(self, value): 
         self.y2 = value
+        self._comp_bg_quantities()
+    
+    @property
+    def yt(self): return self.yt
+    @yt.setter
+    def yt(self, value): 
+        self.yt = value
+        if(self._has_shear12):
+            warnings.warn('Warning: setting class attribute yt, but object was initialized 
+                           with y1,y2; shear components y1 and y2 being set to None')
+            self._has_shear12 = False
+            self.y1= None
+            self.y2 = None
         self._comp_bg_quantities()
 
 
