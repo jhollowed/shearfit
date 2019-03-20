@@ -25,7 +25,8 @@ class NFW:
     Parameters
     ----------
     r200c : float
-        the radius containing mass m200c, or an average density of 200*rho_crit
+        the radius containing mass :math:`M_{200c}`, or an average density of 
+        :math:`200\\rho_\\text{crit}`
     c : float 
         the concentration
     zl : float 
@@ -38,21 +39,69 @@ class NFW:
     rs : float
         the scale radius, `r200c / c`
     x : float array
-        the normalized radii `r/rs` for any input `r` (not initialized until `delta_sigma()` is called) 
+        the normalized radii `r/rs` for any input `r` 
+        (not initialized until `delta_sigma()` is called) 
 
     Methods
     -------
     delta_sigma(r)
-        Computes :math:`\\Delta\\Sigma(r)` for an NFW lens, given sources at projected comoving radii 
-        :math:`r` 
+        Computes :math:`\\Delta\\Sigma(r)` for an NFW lens, given sources at projected 
+        comoving radii :math:`r`
+    get_params()
+        Returns the NFW radius and concentration parameters to the caller
+    set_params(r200c, c)
+        Returns the NFW radius and concentration parameters to the caller
     """
-    def __init__(self, r200c, c, zl, cosmo = WMAP7): 
-        self.r200c = r200c
-        self.c = c
-        self.zl = zl
-        self.cosmo = cosmo
-        self.rs = r200c / c
-        self.x = None
+    def __init__(self, r200c, c, zl, cosmo=WMAP7): 
+        self.__r200c = r200c
+        self.__c = c
+        self.__zl = zl
+        self.__cosmo = cosmo
+        self.__rs = r200c / c
+        self.__x = None
+
+
+    def set_params(self, r200c=self.__r200c, c=self.__c)
+        """
+        Setter function for the caller to update NFW parameters :math:`R_{200c}` and :math:`c`
+
+        Parameters
+        ----------
+        r200c : float, optional
+            the radius containing mass :math:`M_{200c}`, or an average density of 
+            :math:`200\\rho_\\text{crit}`
+        c : float, optional 
+            the concentration
+        """
+        
+        self.__r200c = r200c
+        self.__c = c
+    
+
+    def get_params(self)
+        """
+        Getter function for the caller to retrieve NFW parameters r200c and c
+
+        Return
+        ------
+        2-element list
+            the radius (`float`) containing mass :math:`M_{200c}`, or an average density of 
+            :math:`200\\rho_\\text{crit}`, followed by the concentration (`float`)
+        """
+        
+        return [self.__r200c, self.__c]
+
+
+    def radius_to_mass(self):
+        """
+        Computes the halo mass contained within :math:`r_{200c}`
+
+        Returns
+        -------
+        m200c : float
+            The halo mass :math:`M_{200c}` in units of :math:`M_\\odot`
+        """
+
 
 
     def _g(self):
@@ -75,7 +124,6 @@ class NFW:
                   (4.*np.arctan(np.sqrt((x-1)/(1+x))) / (x**2 - 1)**(3/2))
         
         # construct masks for piecewise function
-
         m1 = np.where(self.x < 1)
         m2 = np.where(self.x == 1)
         m3 = np.where(self.x > 1)
@@ -109,7 +157,7 @@ class NFW:
             the modified surface density :math:`\\Delta\\Sigma` in :math:`M_{\\odot}/\\text{pc}^2` 
         """
 
-        self.x = r / self.rs
+        self.__x = r / self.__rs
 
         # unit conversion factors
         cm_per_Mpc = units.Mpc.to('cm')
@@ -118,8 +166,8 @@ class NFW:
         # del_c NFW param, 
         # critical density rho_crit in M_sun Mpc^-3,
         # modified surface density DSigma; rightmost factor scales Mpc to pc
-        del_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
-        rho_crit = cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
-        dSigma = ((self.rs*del_c*rho_crit) * self._g()) * 1e-12
+        del_c = (200/3) * self.__c**3 / (np.log(1+self.__c) - self.__c/(1+self.__c))
+        rho_crit = self.__cosmo.critical_density(self.__zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
+        dSigma = ((self.__rs*del_c*rho_crit) * self._g()) * 1e-12
 
         return dSigma

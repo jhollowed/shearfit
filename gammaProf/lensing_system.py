@@ -92,10 +92,12 @@ class obs_lens_system:
         self.r = np.linalg.norm([np.tan(self.bg_theta1), np.tan(self.bg_theta2)], axis=0) * \
                  cosmo.comoving_distance(zs)
         
+        # compute tangential shear yt
         phi = np.arctan(theta2/theta1)
         self.y1 = y1
         self.y2 = y2
         self.yt = -(y1 * np.cos(2*phi) + y2*np.sin(2*phi))
+
         self.has_sources = True
 
 
