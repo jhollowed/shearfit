@@ -26,7 +26,7 @@ r200 = 2.0
 c = 3.0
 mock_lens = obs_lens_system(zl)
 mock_lens.set_background(x, y, zs, yt = 0)
-sigmaCrit = test_lens.calc_sigma_crit()
+sigmaCrit = mock_lens.calc_sigma_crit()
 
 # assign all the sources with perfect NFW tangential shears, and add scatter (20% for 1std of pop)
 profile = NFW(r200, c, zl)
@@ -34,9 +34,9 @@ dSigma_true = profile.delta_sigma(np.linspace(min(r), max(r), 1000))
 dSigma_data = profile.delta_sigma(r)
 
 yt_clean = dSigma_data/sigmaCrit
-noise_data = np.sqrt(0.2) * np.random.randn(len(r))
-y_data = y_clean + (y_clean*noise_data)
-mock_lens.yt = y_data
+noise_data = np.sqrt(0.1) * np.random.randn(len(r))
+yt_data = yt_clean + (yt_clean*noise_data)
+mock_lens.yt = yt_data
 
 # now let's go backward and fit these augmented shears to the NFW profile we defined above,
 # after scrambling it's parameters, and assume we have rough proiors on the radius and concentration

@@ -1,6 +1,7 @@
+import pdb
 import numpy as np
 from lensing_system import obs_lens_system
-from analytic_profile import NFW
+from analytic_profiles import NFW
 from scipy import optimize
 from mass_concentration import child2018
 
@@ -45,26 +46,29 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     sources = data.get_background()
     Ec = data.calc_sigma_crit()
     dSigma_data = sources['yt'] * Ec
+    r = sources['r']
+    pdb.set_trace()
 
     # get parameter guesses from initial NFW form
-    rad_init = profile.r200c()
-    conc_init = profile.c()
+    rad_init = profile.r200c
+    conc_init = profile.c
 
     # initiate the fitting algorithm
     if(cM_relation is None):
         fit_params = [rad_init, conc_init]
-        bounds = ([rad_bounds[0], conc_bounds[0],                                                                                        rad_bounds[1], conc_bounds[1]])
+        bounds = ([rad_bounds[0], conc_bounds[0]],
+                  [rad_bounds[1], conc_bounds[1]])
     else:
         fit_params = [rad_init]
-        bounds = ([rad_bounds[0], rad_bounds[1])
+        bounds = ([rad_bounds[0], rad_bounds[1]])
     
-    res = optimize.least_squares(nfw_fit_residual, fit_params, 
+    res = optimize.least_squares(_nfw_fit_residual, fit_params, 
                                  args=(profile, r, dSigma_data, cM_relation), 
                                  bounds = bounds)
 
 
     
-def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation)
+def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
     """
     Evaluate the residual of an NFW profile fit to data, given updated parameter values. 
     This function meant to be called iteratively from `fit_nfw_profile_lstq` only.
@@ -117,7 +121,8 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation)
         profile.c = c_new
     
     # evaluate NFW form
-    dSigma_nfw = profle.delta_sigma(r)
+    pdb.set_trace()
+    dSigma_nfw = profile.delta_sigma(r)
     
     # residuals
     residuals = dSigma_data - dSigma_nfw

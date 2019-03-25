@@ -53,25 +53,25 @@ class NFW:
         Returns the NFW radius and concentration parameters to the caller
     """
     def __init__(self, r200c, c, zl, cosmo=WMAP7): 
-        self.r200c = r200c
-        self.c = c
+        self._r200c = r200c
+        self._c = c
         self.zl = zl
         self.cosmo = cosmo
         self._rs = r200c / c
         self._x = None
 
     @property
-    def r200c(self): return self.r200c
+    def r200c(self): return self._r200c
     @r200c.setter
     def r200c(self, value): 
-        self.r200c = value
+        self._r200c = value
         self._rs = self.r200c / self.c
     
     @property
-    def c(self): return self.c
+    def c(self): return self._c
     @r200c.setter
     def c(self, value): 
-        self.c = value
+        self._c = value
         self._rs = self.r200c / self.c
 
 
@@ -90,7 +90,7 @@ class NFW:
         kg_per_msun = const.M_sun.value
         rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
 
-        m200c = (4/3) * np.pi * self.r200c * rho_crit
+        m200c = (4/3) * np.pi * self._r200c * rho_crit
         return m200c
 
 
@@ -119,14 +119,14 @@ class NFW:
                   (4.*np.arctan(np.sqrt((x-1)/(1+x))) / (x**2 - 1)**(3/2))
         
         # construct masks for piecewise function
-        m1 = np.where(self.x < 1)
-        m2 = np.where(self.x == 1)
-        m3 = np.where(self.x > 1)
+        m1 = np.where(x < 1)
+        m2 = np.where(x == 1)
+        m3 = np.where(x > 1)
         
-        reduced_profile = np.empty(len(self.x),dtype=np.float64)
-        reduced_profile[m1] = g1( self.x[m1] )
+        reduced_profile = np.empty(len(x),dtype=np.float64)
+        reduced_profile[m1] = g1( x[m1] )
         reduced_profile[m2] = 10./3 + 4.*np.log(1./2)
-        reduced_profile[m3] = g2( self.x[m3] )
+        reduced_profile[m3] = g2( x[m3] )
         
         return reduced_profile
 
@@ -162,7 +162,7 @@ class NFW:
         # del_c NFW param, 
         # critical density rho_crit in M_sun Mpc^-3,
         # modified surface density DSigma; rightmost factor scales Mpc to pc
-        del_c = (200/3) * self.c**3 / (np.log(1+self.c) - self.c/(1+self.c))
+        del_c = (200/3) * self._c**3 / (np.log(1+self._c) - self.c/(1+self._c))
         rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
         dSigma = ((self._rs*del_c*rho_crit) * self._g(x)) / pc_per_Mpc
 

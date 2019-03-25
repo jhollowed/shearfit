@@ -1,3 +1,4 @@
+import pdb
 import warnings
 import numpy as np
 import astropy.units as units
@@ -55,17 +56,17 @@ class obs_lens_system:
     
     def __init__(self, zl, cosmo=WMAP7):
         self.zl = zl
-        self.cosmo = cosmo
+        self._cosmo = cosmo
         self._has_sources = False
         self._has_shear12 = False
-        self.bg_theta1 = None
-        self.bg_theta2 = None
-        self.zs = None
+        self._theta1 = None
+        self._theta2 = None
+        self._zs = None
         self._r = None
         self._phi = None
-        self.y1 = None
-        self.y2 = None
-        self.yt = None
+        self._y1 = None
+        self._y2 = None
+        self._yt = None
 
 
     def _check_sources(self):
@@ -108,16 +109,16 @@ class obs_lens_system:
         # the _has_shear12 attribute will be used to communicate to other methods which usage
         # has been invoked
         if((y1 is None and y2 is None and yt is None) or
-           ((y1 is not None or y2 is not None) and yt is not None):
+           ((y1 is not None or y2 is not None) and yt is not None)):
           raise Exception('Either y1 and y2 must be passed, or yt must be passed, not both.')
         
         # initialize source data vectors
-        self.bg_theta1 = (np.pi/180) * (theta1/3600)
-        self.bg_theta2 = (np.pi/180) * (theta2/3600)
-        self.zs = zs
-        self.y1 = y1
-        self.y2 = y2
-        self.yt = yt
+        self._theta1 = np.array((np.pi/180) * (theta1/3600))
+        self._theta2 = np.array((np.pi/180) * (theta2/3600))
+        self._zs = np.array(zs)
+        self._y1 = np.array(y1)
+        self._y2 = np.array(y2)
+        self._yt = np.array(yt)
         
         # set flags and compute additonal quantities
         if(yt is None): self._has_shear12 = True
@@ -135,13 +136,14 @@ class obs_lens_system:
         self._check_sources()
         
         # compute halo-centric projected radial separation of each source, in Mpc
-        self._r = np.linalg.norm([np.tan(self.bg_theta1), np.tan(self.bg_theta2)], axis=0) * \
-                                  self.cosmo.comoving_distance(zs)
+        self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
+                                  self._cosmo.comoving_distance(self._zs).value
         
         if(self._has_shear12):
             # compute tangential shear yt
-            self._phi = np.arctan(theta2/theta1)
-            self.yt = -(y1 * np.cos(2*phi) + y2*np.sin(2*phi))
+            self._phi = np.arctan(self._theta2/self._theta1)
+            self._yt = -(self._y1 * np.cos(2*self._phi) + 
+                        self._y2*np.sin(2*self._phi))
     
     
     def get_background(self):
@@ -162,78 +164,78 @@ class obs_lens_system:
             and yt are the source tangential shears.
             If only the tangential shear is being used, then y1 and y2 are omitted
         '''
-        
         self._check_sources()
         
         if(self._has_shear12):
-            bg = np.array([((180/np.pi) * self.bg_theta1) * 3600, 
-                           ((180/np.pi) * self.bg_theta2) * 3600, 
-                           self._r, self.zs, self.y1, self.y2, self.yt], 
-                           dtype = [('theta1',float), ('theta2',float), 
-                                    ('r',float), ('zs',float), 
-                                    ('y1',float), ('y2',float), ('yt',float)])
+            bg = np.rec.fromarrays([((180/np.pi) * self._theta1) * 3600, 
+                                    ((180/np.pi) * self._theta2) * 3600, 
+                                    self._r, self._zs, self._y1, self._y2, self._yt], 
+                                    dtype = [('theta1',float), ('theta2',float), ('r',float), 
+                                             ('zs',float), ('y1',float), ('y2',float), 
+                                             ('yt',float)])
         else:
-            bg = np.array([((180/np.pi) * self.bg_theta1) * 3600, 
-                           ((180/np.pi) * self.bg_theta2) * 3600, 
-                           self._r, self.zs, self.yt], 
-                           dtype = [('theta1',float), ('theta2',float), 
-                                    ('r',float), ('zs',float), ('yt',float)])
+            bg = np.rec.fromarrays([((180/np.pi) * self._theta1) * 3600, 
+                                    ((180/np.pi) * self._theta2) * 3600, 
+                                    self._r, self._zs, self._yt], 
+                                    dtype = [('theta1',float), ('theta2',float), 
+                                             ('r',float), ('zs',float), 
+                                             ('yt',float)])
         return bg
     
 
     @property
-    def cosmo(self): return self.cosmo
+    def cosmo(self): return self._cosmo
     @cosmo.setter
     def cosmo(self, value): 
-        self.cosmo = value
+        self._cosmo = value
         self._comp_bg_quantities()
 
     @property
-    def theta1(self): return self.theta1
+    def theta1(self): return self._theta1
     @theta1.setter
     def theta1(self, value): 
-        self.theta1 = value
+        self._theta1 = value
         self._comp_bg_quantities()
     
     @property
-    def theta2(self): return self.theta2
+    def theta2(self): return self._theta2
     @theta2.setter
     def theta2(self, value): 
-        self.theta2 = value
+        self._theta2 = value
         self._comp_bg_quantities()
     
     @property
-    def zs(self): return self.zs
+    def zs(self): return self._zs
     @theta1.setter
     def zs(self, value): 
-        self.zs = value
+        self._zs = value
         self._comp_bg_quantities()
     
     @property
-    def y1(self): return self.y1
+    def y1(self): return self._y1
     @y1.setter
     def y1(self, value): 
-        self.y1 = value
+        self._y1 = value
         self._comp_bg_quantities()
     
     @property
-    def y2(self): return self.y2
+    def y2(self): return self._y2
     @y2.setter
     def y2(self, value): 
-        self.y2 = value
+        self._y2 = value
         self._comp_bg_quantities()
     
     @property
-    def yt(self): return self.yt
+    def yt(self): return self._yt
     @yt.setter
     def yt(self, value): 
-        self.yt = value
+        self._yt = value
         if(self._has_shear12):
-            warnings.warn('Warning: setting class attribute yt, but object was initialized 
-                           with y1,y2; shear components y1 and y2 being set to None')
+            warnings.warn('Warning: setting class attribute yt, but object was initialized' 
+                          'with y1,y2; shear components y1 and y2 being set to None')
             self._has_shear12 = False
-            self.y1= None
-            self.y2 = None
+            self._y1= None
+            self._y2 = None
         self._comp_bg_quantities()
 
 
@@ -256,14 +258,14 @@ class obs_lens_system:
         '''
         
         self._check_sources()
-        if(zs is None): zs = self.zs
+        if(zs is None): zs = self._zs
 
         # unit conversions and scale factors
         m_per_mpc = units.Mpc.to('m')
         s_per_gyr = units.Gyr.to('s')
         kg_per_msun = const.M_sun.value
         pc_per_Mpc = 1e12
-        a_zl = self.cosmo.scale_factor(self.zl)
+        a_zl = self._cosmo.scale_factor(self.zl)
 
         # G in comoving Mpc^3 M_sun^-1 Gyr^-2,
         # speed of light C in comoving Mpc Gyr^-1
@@ -271,8 +273,8 @@ class obs_lens_system:
         # --> warning: this assumes a flat cosmology; or that angular diamter distance = proper distance
         G = const.G.value * ((s_per_gyr**2 * kg_per_msun)/m_per_mpc**3)
         C = const.c.value * (s_per_gyr/m_per_mpc)
-        Ds = self.cosmo.angular_diameter_distance(zs).value
-        Dl = self.cosmo.angular_diameter_distance(self.zl).value
+        Ds = self._cosmo.angular_diameter_distance(zs).value
+        Dl = self._cosmo.angular_diameter_distance(self.zl).value
         Dls = Ds - Dl
         
         # critical surface mass density Σ_c; 
