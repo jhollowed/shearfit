@@ -69,7 +69,7 @@ class NFW:
     
     @property
     def c(self): return self._c
-    @r200c.setter
+    @c.setter
     def c(self, value): 
         self._c = value
         self._rs = self.r200c / self.c

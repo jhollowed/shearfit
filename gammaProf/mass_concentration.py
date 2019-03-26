@@ -5,7 +5,7 @@ This module contains a collection of concentration-mass relations as given in th
 the functions below take a halo mass as an argument, and will return a predicted concentration.
 '''
 
-def child2018(m200c, fit='nfw'):
+def child2018(m200c, fit='nfw_stack'):
     """
     Computes the predicted halo concentration, given a M_200c halo mass, using the 
     c-M relation of Child et.al. 2018.

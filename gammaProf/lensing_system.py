@@ -136,9 +136,10 @@ class obs_lens_system:
         self._check_sources()
         
         # compute halo-centric projected radial separation of each source, in Mpc
+        # sort all other data columns by this quantity
         self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
                                   self._cosmo.comoving_distance(self._zs).value
-        
+ 
         if(self._has_shear12):
             # compute tangential shear yt
             self._phi = np.arctan(self._theta2/self._theta1)
@@ -148,7 +149,9 @@ class obs_lens_system:
     
     def get_background(self):
         '''
-        Returns the source population data vectors to the caller, as a list. 
+        Returns the source population data vectors to the caller as a numpy 
+        rec array, sorted in ascending order with respect to the halo-centric 
+        radial distance
 
         Returns
         -------
@@ -167,15 +170,16 @@ class obs_lens_system:
         self._check_sources()
         
         if(self._has_shear12):
-            bg = np.rec.fromarrays([((180/np.pi) * self._theta1) * 3600, 
-                                    ((180/np.pi) * self._theta2) * 3600, 
-                                    self._r, self._zs, self._y1, self._y2, self._yt], 
+            bg = np.rec.fromarrays([(180/np.pi * self._theta1 * 3600), 
+                                    (180/np.pi * self._theta2 * 3600), 
+                                    self._r, self._zs, self._y1, 
+                                    self._y2, self._yt], 
                                     dtype = [('theta1',float), ('theta2',float), ('r',float), 
                                              ('zs',float), ('y1',float), ('y2',float), 
                                              ('yt',float)])
         else:
-            bg = np.rec.fromarrays([((180/np.pi) * self._theta1) * 3600, 
-                                    ((180/np.pi) * self._theta2) * 3600, 
+            bg = np.rec.fromarrays([(180/np.pi * self._theta1 * 3600), 
+                                    (180/np.pi * self._theta2 * 3600), 
                                     self._r, self._zs, self._yt], 
                                     dtype = [('theta1',float), ('theta2',float), 
                                              ('r',float), ('zs',float), 
