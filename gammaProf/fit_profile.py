@@ -87,27 +87,27 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         profile.c = c_final
     
     # if bootstrap==True, then repeat the entire process above bootN times to estimate the
-    # recovered parameter errors
+    # recovered parameter errors, else return errors of 0
     if(bootstrap):
         bootstrap_profile = copy.deepcopy(profile)
         params_bootstrap = np.zeros((bootN, 2))
         for n in range(bootN):
-            rad_init = bootstrap_profile.r200c
-            conc_init = bootstrap_profile.c
-            boot_i = np.random.choice(np.arange(len(r)), np.len(r)*bootF, replace=True)
+            bootstrap_profile.r200c = rad_init
+            bootstrap_profile.c = conc_init
+            boot_i = np.random.choice(np.arange(len(r)), int(len(r)*bootF), replace=True)
             res_i = optimize.least_squares(_nfw_fit_residual, fit_params, 
-                                           args=(profile, r[boot_i], dSigma_data[boot_i], 
+                                           args=(bootstrap_profile, r[boot_i], dSigma_data[boot_i], 
                                            cM_relation), bounds = bounds)
             if(cM_relation is not None):
                 m200c = bootstrap_profile.radius_to_mass()
                 c_final = cM_func(m200c)
                 params_bootstrap[n][0] = res_i.x[0]
-                parms_bootstrap[n][1] = c_final
+                params_bootstrap[n][1] = c_final
             else:
                 params_bootstrap[n] = res_i.x
         param_err = Nsigma * np.std(params_bootstrap, axis=0)
     else:
-        param_err = [None, None]
+        param_err = [0, 0]
 
     return [res, param_err]
 
@@ -146,7 +146,7 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
         The residuals, in this case, are the difference `dSigma_data - dSigma_nfw`.
     """
    
-    # update the NFW analytical profile object
+    # update the NFW profile object
     if(len(fit_params) > 1):
         
         # floating concentration
@@ -157,13 +157,14 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
     else:
         
         # concentration modeled from c-M relation
-        cM_func = {'child2018':child2018}[cM_relation]
         r200c = fit_params[0]
+        profile.r200c = r200c
+        
+        cM_func = {'child2018':child2018}[cM_relation]
         m200c = profile.radius_to_mass()
         c_new = cM_func(m200c)
-        
-        profile.r200c = r200c
         profile.c = c_new
+        
     
     # evaluate NFW form
     dSigma_nfw = profile.delta_sigma(r)
@@ -201,7 +202,7 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
     ------
     list of two 2d numpy arrays
         First element is a meshgrid giving the radius and concentration values of each sample 
-        point used. Second element is the :math:`\Chi^2` at each one of those points.
+        point used. Second element is the :math:`\\chi^2` at each one of those points.
     """
 
     profile = copy.deepcopy(profile)
@@ -224,23 +225,3 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
             cost[i][j] = np.sum(residuals**2) 
 
     return [np.meshgrid(rsamp, csamp), cost]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

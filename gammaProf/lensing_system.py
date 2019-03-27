@@ -138,7 +138,8 @@ class obs_lens_system:
         # compute halo-centric projected radial separation of each source, in Mpc
         # sort all other data columns by this quantity
         self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
-                                  self._cosmo.comoving_distance(self._zs).value
+                                  self._cosmo.comoving_distance(self.zl).value
+                                  
  
         if(self._has_shear12):
             # compute tangential shear yt

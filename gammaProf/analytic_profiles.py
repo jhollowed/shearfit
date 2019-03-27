@@ -90,7 +90,7 @@ class NFW:
         kg_per_msun = const.M_sun.value
         rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
 
-        m200c = (4/3) * np.pi * self._r200c * rho_crit
+        m200c = (4/3) * np.pi * self._r200c**3 * rho_crit
         return m200c
 
 
