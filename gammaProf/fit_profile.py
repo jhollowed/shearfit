@@ -8,7 +8,7 @@ from mass_concentration import child2018
 import matplotlib.pyplot as plt
 
 def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_relation=None, 
-                         bootstrap=False, bootN = 1000, bootF = 0.5, Nsigma = 1):
+                         bootstrap=False, bootN = 1000, bootF = 1.0, Nsigma = 1, replace=True):
     """
     Fits an NFW-predicted :math:`\\Delta\\Sigma(r)` profile to a background shear dataset. To use
     this function, the user should first instantiate a `obs_lens_system` object, which will hold the
@@ -34,17 +34,22 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     cM_relation : string, optional
         The name of a :math:`c-M` relation to use in the fitting procedure. If `None`, then the 
         minimization will proceed with respect to both :math:`r_200c` and :math:`c`. If provided
-        as a `string`, then infer the concentration from the :math:`c-M` relation on each iteration of 
-        the least squares routine (in this case, the `conc_bounds` arg need not be passed). Options are 
-        `{'child2018'}`. Defaults to `None`.
+        as a `string`, then infer the concentration from the :math:`c-M` relation on each iteration 
+        of the least squares routine (in this case, the `conc_bounds` arg need not be passed). 
+        Options are `{'child2018'}`. Defaults to `None`.
     bootstrap : boolean
-        Whether or not to perform fitted parameter bootstrap error estaimtion
-    bootN: int
-        The number of realizations from the input data given by `data` to include in the bootstrap
-    bootF:
-        The fraction of the initial dataset `data` to include in each bootstrap realization
-    Nsigma:
-        The bootstrap confidence interval to return; `Nsigma=1` will return :math:`1\\sigma`, or ~68%, intervals
+        Whether or not to perform fitted parameter bootstrap error estaimtion. Defaults to False
+    bootN : int
+        The number of realizations from the input data given by `data` to include in the bootstrap. 
+        Defaults to 1000
+    bootF : float
+        The fraction of the initial dataset `data` to include in each bootstrap realization. 
+        Defaults to 1.0
+    Nsigma : int
+        The bootstrap confidence interval to return; `Nsigma=1` will return :math:`1\\sigma`, 
+        or ~68%, intervals
+    replace : boolean
+        Whether or not to perform the bootstrap resamples with replacement. Defaults to True
 
     Returns
     -------
@@ -79,35 +84,48 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
                                  args=(profile, r, dSigma_data, cM_relation), 
                                  bounds = bounds)
     
-    # if inferring the concentration from a c-M relation, then the 
-    # final minimization iteration updated the radius only; update c before return
+    # if inferring the concentration from a c-M relation, then the final minimization 
+    # iteration updated the radius only; update c before return, and calculate the 
+    # intrinsic c-M scatter
     if(cM_relation is not None):
         m200c = profile.radius_to_mass()
         c_final = cM_func(m200c)
         profile.c = c_final
+        c_intr_scatter = c_final / 3
+    else:
+        c_intr_scatter = 0
     
     # if bootstrap==True, then repeat the entire process above bootN times to estimate the
-    # recovered parameter errors, else return errors of 0
+    # recovered parameter errors. Else, return zero error on the radius, and return the 
+    # intrinsic c-M scatter on the concentration (zero if c is free)
     if(bootstrap):
         bootstrap_profile = copy.deepcopy(profile)
         params_bootstrap = np.zeros((bootN, 2))
+        c_intr_scatter_bootstrap = np.zeros(bootN)
+
         for n in range(bootN):
             bootstrap_profile.r200c = rad_init
             bootstrap_profile.c = conc_init
-            boot_i = np.random.choice(np.arange(len(r)), int(len(r)*bootF), replace=True)
+            boot_i = np.random.choice(np.arange(len(r)), int(len(r)*bootF), replace=replace)
             res_i = optimize.least_squares(_nfw_fit_residual, fit_params, 
                                            args=(bootstrap_profile, r[boot_i], dSigma_data[boot_i], 
                                            cM_relation), bounds = bounds)
             if(cM_relation is not None):
                 m200c = bootstrap_profile.radius_to_mass()
-                c_final = cM_func(m200c)
                 params_bootstrap[n][0] = res_i.x[0]
-                params_bootstrap[n][1] = c_final
+                params_bootstrap[n][1] = cM_func(m200c)
+                c_intr_scatter_bootstrap[n] = params_bootstrap[n][1] / 3
             else:
                 params_bootstrap[n] = res_i.x
-        param_err = Nsigma * np.std(params_bootstrap, axis=0)
+                c_intr_scatter_bootstrap[n] = 0
+
+        # estaimte the parameter uncertainty as the spread of the bootstrap fit values, 
+        # adding the intrinsic c-M scatter to the concentration error (zero if c is free)
+        param_err = Nsigma * np.std(params_bootstrap, axis=0) + \
+                    [0, np.mean(c_intr_scatter_bootstrap)]
+        pdb.set_trace()
     else:
-        param_err = [0, 0]
+        param_err = [0, c_intr_scatter]
 
     return [res, param_err]
 

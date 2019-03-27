@@ -30,21 +30,21 @@ zs = (np.random.rand(len(x))*0.5) + 0.8
 # place lens (set shears to 0 for now)
 zl = 0.35
 r200 = 4.25
-c = 4.44
+c = 4.0
 mock_lens = obs_lens_system(zl)
 mock_lens.set_background(x, y, zs, yt = np.zeros(len(x)))
 bg = mock_lens.get_background()
 r = bg['r']
 sigmaCrit = mock_lens.calc_sigma_crit()
 
-# assign all the sources with perfect NFW tangential shears, and add scatter (20% for 1std of pop)
+# assign all the sources with perfect NFW tangential shears, and add scatter (10% for 1std of pop)
 rsamp = np.linspace(min(r), max(r), 1000)
 true_profile = NFW(r200, c, zl)
 dSigma_true = true_profile.delta_sigma(rsamp)
 
 dSigma_clean = true_profile.delta_sigma(r)
 yt_clean = dSigma_clean/sigmaCrit
-noise = 0*(np.sqrt(0.1) * np.random.randn(len(r)))
+noise = (np.sqrt(0.1) * np.random.randn(len(r)))
 yt_data = yt_clean + (yt_clean*noise)
 mock_lens.yt = yt_data
 
@@ -77,7 +77,6 @@ fitted_cm_profile.r200c = fitted_cm_profile.r200c - 2*cm_fit_err[0]
 fitted_cm_profile.c = fitted_cm_profile.c - 2*cm_fit_err[1]
 dSigma_fitted_cm_err1 = fitted_cm_profile.delta_sigma(rsamp)
 
-pdb.set_trace()
 # now do a grid scan
 print('doing grid scan')
 gridscan_profile = NFW(2.0, 2.0, zl)
@@ -91,8 +90,8 @@ rc('text', usetex=True)
 color = plt.cm.plasma(np.linspace(0.2, 0.8, 3))
 mpl.rcParams['axes.prop_cycle'] = cycler.cycler('color', color)
 
-f = plt.figure()
-ax = f.add_subplot(111)
+f = plt.figure(figsize=(12,6))
+ax = f.add_subplot(121)
 ax.plot(r, dSigma_clean, 'x', color='grey', label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c$')
 ax.plot(r, yt_data*sigmaCrit, 'xk', label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\> + \>\>\mathrm{Gaussian\>noise}$')
 ax.plot(rsamp, dSigma_true, '--', label=r'$\Delta\Sigma_\mathrm{{NFW}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
@@ -102,23 +101,27 @@ ax.plot(rsamp, dSigma_fitted, label=r'$\Delta\Sigma_\mathrm{{fit}},\>\>r_{{200c}
 ax.plot(rsamp, dSigma_fitted_cm, label=r'$\Delta\Sigma_{{\mathrm{{fit}},c-M}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
                                        .format(res_cm_fit.x[0], fitted_cm_profile.c + cm_fit_err[1]), 
                                        color=color[2], lw=2)
-ax.fill_between(rsamp, dSigma_fitted_err0, dSigma_fitted_err1, color=color[1], alpha=0.33)
-ax.fill_between(rsamp, dSigma_fitted_cm_err0, dSigma_fitted_cm_err1, color=color[2], alpha=0.33)
+ax.fill_between(rsamp, dSigma_fitted_err0, dSigma_fitted_err1, color=color[1], alpha=0.2, lw=0)
+ax.fill_between(rsamp, dSigma_fitted_cm_err0, dSigma_fitted_cm_err1, color=color[2], alpha=0.33, lw=0)
 
 ax.legend(fontsize=14, loc='upper right')
 ax.set_xlabel(r'$r\>\>\lbrack\mathrm{Mpc}\rbrack$', fontsize=14)
 ax.set_ylabel(r'$\Delta\Sigma\>\>\lbrack\mathrm{M}_\odot\mathrm{pc}^{-2}\rbrack$', fontsize=14)
 
-f2 = plt.figure()
-ax2 = f2.add_subplot(111)
-ax2.scatter(grid_pos[0], grid_pos[1], c=1/grid_res, cmap='plasma', label=r'$\chi^2$')
+ax2 = f.add_subplot(122)
+pdb.set_trace()
+chi2 = ax2.pcolormesh(grid_pos[0], grid_pos[1], (1/grid_res)/(np.max(1/grid_res)), cmap='plasma')
 ax2.plot([r200], [c], 'xk', ms=10, label=r'$\Delta\Sigma_\mathrm{{true}}$')
-ax2.errorbar(res_fit.x[0], res_fit.x[1], xerr=fit_err[0], yerr=fit_err[1], ms=7, marker='s', color='c',
+ax2.errorbar(res_fit.x[0], res_fit.x[1], xerr=fit_err[0], yerr=fit_err[1], ms=10, marker='.', c='c',
              label=r'$\Delta\Sigma_\mathrm{{fit}}$')
 ax2.errorbar(res_cm_fit.x[0], fitted_cm_profile.c + cm_fit_err[1], 
-             xerr=cm_fit_err[0], yerr=cm_fit_err[1], ms=7, marker='s', color='b',
+             xerr=cm_fit_err[0], yerr=cm_fit_err[1], ms=10, marker='.', c='b',
              label=r'$\Delta\Sigma_{\mathrm{{fit},c\mathrm{-}M}}$')
 ax2.legend(fontsize=14, loc='upper right')
+cbar = f.colorbar(chi2, ax=ax2)
+cbar.set_label(r'$\left[(\chi^2/\mathrm{min}(\chi^2))\right]^{-1}$', fontsize=14)
+ax2.set_xlabel(r'$r_{200c}\>\>\left[\mathrm{Mpc}\right]$', fontsize=14)
+ax2.set_ylabel(r'$c_{200c}$', fontsize=14)
 
 plt.tight_layout()
 plt.show()
