@@ -123,7 +123,6 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         # adding the intrinsic c-M scatter to the concentration error (zero if c is free)
         param_err = Nsigma * np.std(params_bootstrap, axis=0) + \
                     [0, np.mean(c_intr_scatter_bootstrap)]
-        pdb.set_trace()
     else:
         param_err = [0, c_intr_scatter]
 

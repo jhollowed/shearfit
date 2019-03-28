@@ -63,7 +63,8 @@ class NFW:
     @property
     def r200c(self): return self._r200c
     @r200c.setter
-    def r200c(self, value): 
+    def r200c(self, value):
+        assert(isinstance(value, float))
         self._r200c = value
         self._rs = self.r200c / self.c
     
@@ -71,6 +72,7 @@ class NFW:
     def c(self): return self._c
     @c.setter
     def c(self, value): 
+        assert(isinstance(value, float))
         self._c = value
         self._rs = self.r200c / self.c
 

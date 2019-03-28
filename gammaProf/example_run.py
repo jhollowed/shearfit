@@ -8,6 +8,7 @@ from fit_profile import fit_nfw_profile_lstq as fit
 from fit_profile import fit_nfw_profile_gridscan as fit_gs
 from matplotlib import rc
 import matplotlib as mpl
+from mass_concentration import child2018 as cm
 
 """
 This script performs an example run of the package, fitting an NFW profile to synthetically 
@@ -80,16 +81,20 @@ dSigma_fitted_cm_err1 = fitted_cm_profile.delta_sigma(rsamp)
 # now do a grid scan
 print('doing grid scan')
 gridscan_profile = NFW(2.0, 2.0, zl)
-[grid_pos, grid_res] = fit_gs(mock_lens, gridscan_profile, rad_bounds = [1, 6], conc_bounds = [2, 8], n=200)
+grid_r_bounds = [1, 7]
+grid_c_bounds = [0.5, 9]
+[grid_pos, grid_res] = fit_gs(mock_lens, gridscan_profile, 
+                              rad_bounds = grid_r_bounds, conc_bounds = grid_c_bounds, n=200)
 
 print('r200c_fit = {}; c_fit = {}'.format(fitted_profile.r200c, fitted_profile.c))
 print('r200c_cm = {}; c_cm = {}'.format(fitted_cm_profile.r200c, fitted_cm_profile.c))
 
-# visualize results 
+# visualize results... 
 rc('text', usetex=True)
 color = plt.cm.plasma(np.linspace(0.2, 0.8, 3))
 mpl.rcParams['axes.prop_cycle'] = cycler.cycler('color', color)
 
+# plot sources vs truth and both fits
 f = plt.figure(figsize=(12,6))
 ax = f.add_subplot(121)
 ax.plot(r, dSigma_clean, 'x', color='grey', label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c$')
@@ -104,19 +109,36 @@ ax.plot(rsamp, dSigma_fitted_cm, label=r'$\Delta\Sigma_{{\mathrm{{fit}},c-M}},\>
 ax.fill_between(rsamp, dSigma_fitted_err0, dSigma_fitted_err1, color=color[1], alpha=0.2, lw=0)
 ax.fill_between(rsamp, dSigma_fitted_cm_err0, dSigma_fitted_cm_err1, color=color[2], alpha=0.33, lw=0)
 
+# format
 ax.legend(fontsize=14, loc='upper right')
 ax.set_xlabel(r'$r\>\>\lbrack\mathrm{Mpc}\rbrack$', fontsize=14)
 ax.set_ylabel(r'$\Delta\Sigma\>\>\lbrack\mathrm{M}_\odot\mathrm{pc}^{-2}\rbrack$', fontsize=14)
 
+
+# plot fit cost in the radius-concentration plane
 ax2 = f.add_subplot(122)
-pdb.set_trace()
 chi2 = ax2.pcolormesh(grid_pos[0], grid_pos[1], (1/grid_res)/(np.max(1/grid_res)), cmap='plasma')
-ax2.plot([r200], [c], 'xk', ms=10, label=r'$\Delta\Sigma_\mathrm{{true}}$')
-ax2.errorbar(res_fit.x[0], res_fit.x[1], xerr=fit_err[0], yerr=fit_err[1], ms=10, marker='.', c='c',
-             label=r'$\Delta\Sigma_\mathrm{{fit}}$')
+ax2.plot([r200], [c], 'xk', ms=10, label=r'$\mathrm{{truth}}$')
+ax2.errorbar(res_fit.x[0], res_fit.x[1], xerr=fit_err[0], yerr=fit_err[1], ms=10, marker='.', c=color[1],
+             label=r'$\mathrm{{fit}}$')
 ax2.errorbar(res_cm_fit.x[0], fitted_cm_profile.c + cm_fit_err[1], 
-             xerr=cm_fit_err[0], yerr=cm_fit_err[1], ms=10, marker='.', c='b',
-             label=r'$\Delta\Sigma_{\mathrm{{fit},c\mathrm{-}M}}$')
+             xerr=cm_fit_err[0], yerr=cm_fit_err[1], ms=10, marker='.', c=color[2],
+             label=r'${\mathrm{{fit\>w/}c\mathrm{-}M}}$')
+
+# include c-M relation curve
+tmp_profile = NFW(1,1,zl)
+tmp_m200c = np.zeros(len(grid_pos[0][0]))
+for i in range(len(tmp_m200c)):
+    tmp_profile.r200c = grid_pos[0][0][i]
+    tmp_m200c[i] = tmp_profile.radius_to_mass()
+tmp_c = cm(tmp_m200c)
+tmp_dc = tmp_c/3
+ax2.plot(grid_pos[0][0], tmp_c, '--k', lw=2, label=r'$c\mathrm{-}M\mathrm{\>relation\>(Child+2018)}$')
+ax2.fill_between(grid_pos[0][0], tmp_c - tmp_dc, tmp_c + tmp_dc, color='k', alpha=0.1, lw=0)
+
+# format
+ax2.set_xlim(grid_r_bounds)
+ax2.set_ylim(grid_c_bounds)
 ax2.legend(fontsize=14, loc='upper right')
 cbar = f.colorbar(chi2, ax=ax2)
 cbar.set_label(r'$\left[(\chi^2/\mathrm{min}(\chi^2))\right]^{-1}$', fontsize=14)
