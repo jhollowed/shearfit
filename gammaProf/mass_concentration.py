@@ -13,15 +13,15 @@ def child2018(m200c, fit='nfw_stack'):
     Parameters
     ----------
     m200c : float 
-        The halo's mass :math:`M_{200\\text{c}}` in units of :math:`M_{\\odot} h^{-1}`
+        The halo's mass :math:`M_{200c}` in units of :math:`M_{\\odot} h^{-1}`.
     fit : string
         The set of fit parameters to use (Table 1 in Child+2018); options are
-        `'all'`, `'relaxed'`, `'nfw_stack'`, or `'einasto_stack'`
+        `'all'`, `'relaxed'`, `'nfw_stack'`, or `'einasto_stack'`.
     
     Returns
     -------
-    float
-        the concentration parameter :math:`c_{200\\text{c}}`
+    float array
+        The concentration parameter :math:`c_{200c}`, and the associated error, :math:`c_{200c}/3`.
     """
     
     p_all = {'m':-0.10, 'A':3.44, 'b':430.49, 'c0':3.19}
@@ -36,4 +36,7 @@ def child2018(m200c, fit='nfw_stack'):
     c0 = p[fit]['c0']
     mstar = 1e12
     
-    return A * ((m200c/mstar/b)**m * (1 + m200c/mstar/b)**(-m) -1) + c0
+    c200c = A * ((m200c/mstar/b)**m * (1 + m200c/mstar/b)**(-m) -1) + c0
+    c_err = c200c/3
+
+    return [c200c, c_err]

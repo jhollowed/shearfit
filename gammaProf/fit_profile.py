@@ -8,48 +8,52 @@ from mass_concentration import child2018
 import matplotlib.pyplot as plt
 
 def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_relation=None, 
-                         bootstrap=False, bootN = 1000, bootF = 1.0, Nsigma = 1, replace=True):
+                         bootstrap=True, bootN = 1000, bootF = 1.0, replace=True):
     """
     Fits an NFW-predicted :math:`\\Delta\\Sigma(r)` profile to a background shear dataset. To use
     this function, the user should first instantiate a `obs_lens_system` object, which will hold the
-    observed data to fit to, and an `NFW` object, which will describe the analytic form which should
+    observed data to fit to, and an `NFW` object, which will give the analytic form which should
     describe the data. The present function is then the mediator between these objects that will
     facilitate the minimization routine. Parameter errors can be estaimted via a bootstrap routine
-    (turned off by default).
+    (turned off by default). Note: This function modifies the input `profile` object;  
+    final fit parameters, and their errors, will be given in the `r200c`, `c`, `r200c_err`, and `c_err`
+    attributes of `profile`.
 
     Parameters
     ----------
     data : `obs_len_system` class instance
         An instance of a `obs_lens_system` object as provided by `lensing_system.py`. 
         This is an object representing a lensing system, and contains data vectors 
-        describing properties of a cluster's background sources
+        describing properties of a cluster's background sources.
     profile : `NFW` class instance
         An instance of a `NFW` object as provided by `analytic_profiles.py`. This is
         an object representing an analytic NFW profile, and computes the predicted 
-        projected surface density
+        projected surface density. This object is modified by the present function; the 
+        final fit parameters, and their errors, will be given in the `r200c`, `c`, `r200c_err`, 
+        and `c_err` attributes of `profile`.
     rad_bounds : 2-element list
-        The bounds (tophat prior) for the first fitting parameter, :math:`r_{200c}`
+        The bounds (tophat prior) for the first fitting parameter, :math:`r_{200c}`.
     conc_bounds : 2-element list, optional
-        The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to [0,10]
+        The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to [0,10].
     cM_relation : string, optional
         The name of a :math:`c-M` relation to use in the fitting procedure. If `None`, then the 
         minimization will proceed with respect to both :math:`r_200c` and :math:`c`. If provided
         as a `string`, then infer the concentration from the :math:`c-M` relation on each iteration 
         of the least squares routine (in this case, the `conc_bounds` arg need not be passed). 
         Options are `{'child2018'}`. Defaults to `None`.
-    bootstrap : boolean
-        Whether or not to perform fitted parameter bootstrap error estaimtion. Defaults to False
-    bootN : int
+    bootstrap : boolean, optional
+        Whether or not to perform fitted parameter bootstrap error estaimtion. If False, and also using 
+        a c-M relation rather than fitting the concentration, then the intrinsic scatter of the c-M relation 
+        is still given as an error on the best-fit `c` value. Else, no errors are given for either parameter.
+        Defaults to True.
+    bootN : int, optional
         The number of realizations from the input data given by `data` to include in the bootstrap. 
         Defaults to 1000
-    bootF : float
+    bootF : float, optional
         The fraction of the initial dataset `data` to include in each bootstrap realization. 
-        Defaults to 1.0
-    Nsigma : int
-        The bootstrap confidence interval to return; `Nsigma=1` will return :math:`1\\sigma`, 
-        or ~68%, intervals
-    replace : boolean
-        Whether or not to perform the bootstrap resamples with replacement. Defaults to True
+        Defaults to 1.0.
+    replace : boolean, optional
+        Whether or not to perform the bootstrap resamples with replacement. Defaults to True.
 
     Returns
     -------
@@ -57,7 +61,9 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         Fields for the first element of the return list are defined as detailed in the return signature 
         of `scipy.optimize.least_squares`. See documentation here: 
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.least_squares.html
-        The second element is a list of the bootstrap errors, for the radius and concentration parameters
+        The second element is a list of the bootstrap errors, for the radius and concentration parameters.
+        Note that this return is redundant; this function updates the input `profile` object to contain 
+        the best fit parameters, and their errors.
     """
     
     # get the background data, and scale the tangential shear to ΔΣ 
@@ -89,11 +95,12 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     # intrinsic c-M scatter
     if(cM_relation is not None):
         m200c = profile.radius_to_mass()
-        c_final = cM_func(m200c)
+        c_final, c_err_final = cM_func(m200c)
         profile.c = c_final
-        c_intr_scatter = c_final / 3
+        profile.c_err = c_err_final
     else:
-        c_intr_scatter = 0
+        profile.c_err = 0
+    profile.r200c_err = 0
     
     # if bootstrap==True, then repeat the entire process above bootN times to estimate the
     # recovered parameter errors. Else, return zero error on the radius, and return the 
@@ -113,21 +120,21 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
             if(cM_relation is not None):
                 m200c = bootstrap_profile.radius_to_mass()
                 params_bootstrap[n][0] = res_i.x[0]
-                params_bootstrap[n][1] = cM_func(m200c)
-                c_intr_scatter_bootstrap[n] = params_bootstrap[n][1] / 3
+                params_bootstrap[n][1], c_intr_scatter_bootstrap[n] = cM_func(m200c)
             else:
                 params_bootstrap[n] = res_i.x
                 c_intr_scatter_bootstrap[n] = 0
 
         # estaimte the parameter uncertainty as the spread of the bootstrap fit values, 
         # adding the intrinsic c-M scatter to the concentration error (zero if c is free)
-        param_err = Nsigma * np.std(params_bootstrap, axis=0) + \
+        param_err = np.std(params_bootstrap, axis=0) + \
                     [0, np.mean(c_intr_scatter_bootstrap)]
-    else:
-        param_err = [0, c_intr_scatter]
+    
+        # update profile object with errors
+        profile.r200c_err = param_err[0]
+        profile.c_err = param_err[1]
 
     return [res, param_err]
-
 
     
 def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
@@ -140,16 +147,16 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
     fit_params : float list
         The NFW parameter(s) to update for this least squares iteration 
         (either a single-element list including the radius, [r200c], or also including
-        the concentration parameter=, [r200c, c])
+        the concentration parameter=, [r200c, c]).
     profile : `NFW` class instance
         An instance of a `NFW` object as provided by `analytic_profiles.py`. This is the 
-        object that is being augmented per-iteration in the calling least squares routine 
+        object that is being augmented per-iteration in the calling least squares routine.
     r : float array
         The halo-centric radial distances for the sources whose shears are given by yt_data
-        (the NFW profile fitting form will be evaluated at these locations)
+        (the NFW profile fitting form will be evaluated at these locations).
     dSigma_data : float array
         tangential shear values for a collection of background sources, against which to fit
-        the profile
+        the profile.
     cM_relation:
         The name of a :math:`c-M` relation to use in the fitting procedure. If `None`, then the 
         minimization will proceed with respect to both :math:`r_200c` and :math:`c`. If provided
@@ -179,12 +186,11 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
         
         cM_func = {'child2018':child2018}[cM_relation]
         m200c = profile.radius_to_mass()
-        c_new = cM_func(m200c)
+        c_new, _ = cM_func(m200c)
         profile.c = c_new
         
-    
     # evaluate NFW form
-    dSigma_nfw = profile.delta_sigma(r)
+    dSigma_nfw = profile.delta_sigma(r, bootstrap=False)
     
     # residuals
     residuals = dSigma_nfw - dSigma_data
@@ -202,18 +208,18 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
     data : `obs_len_system` class instance
         An instance of a `obs_lens_system` object as provided by `lensing_system.py`. 
         This is an object representing a lensing system, and contains data vectors 
-        describing properties of a cluster's background sources
+        describing properties of a cluster's background sources.
     profile : `NFW` class instance
         An instance of a `NFW` object as provided by `analytic_profiles.py`. This is
         an object representing an analytic NFW profile, and computes the predicted 
-        projected surface density
+        projected surface density.
     rad_bounds : 2-element list
-        The bounds (tophat prior) for the first fitting parameter, :math:`r_{200c}`
+        The bounds (tophat prior) for the first fitting parameter, :math:`r_{200c}`.
     conc_bounds : 2-element list, optional
-        The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to [0,10]
+        The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to [0,10].
     n : int
         The number of sample points in each dimension of the parameter grid, which will be 
-        distributed linearly between the limits given by `rad_bounds` and `conc_bounds`
+        distributed linearly between the limits given by `rad_bounds` and `conc_bounds`.
 
     Return
     ------

@@ -14,44 +14,44 @@ class obs_lens_system:
     Parameters
     ----------
     zl : float
-        the redshift of the lens
+        The redshift of the lens.
     cosmo : object, optional
-        an astropy cosmology object (defaults to WMAP7)
+        An astropy cosmology object (defaults to WMAP7).
 
     Attributes
     ----------
     zl : float
-        the redshift of the lens
+        The redshift of the lens.
     has_sources : boolean
-        whether or not the background population has been set for this instance
-        (`False` until `set_background()` is called)
+        Whether or not the background population has been set for this instance
+        (`False` until `set_background()` is called).
     bg_theta1 : float array
-        the source lens-centric azimuthal angular coordinates, in arcseconds
-        (uninitialized until `set_background()` is called)
+        The source lens-centric azimuthal angular coordinates, in arcseconds
+        (uninitialized until `set_background()` is called).
     bg_theta2 : float array
-        the source lens-centric coaltitude angular coordinates, in arcseconds
-        (uninitialized until `set_background()` is called)
+        The source lens-centric coaltitude angular coordinates, in arcseconds
+        (uninitialized until `set_background()` is called).
     zs : float array
-        redshifts of background sources
-        (uninitialized until `set_background()` is called)
+        Redshifts of background sources
+        (uninitialized until `set_background()` is called).
     r : float array
-        projected separation of each source at the redshift `zl`, in comoving Mpc
-        (uninitialized until `set_background()` is called)
+        Projected separation of each source at the redshift `zl`, in comoving Mpc
+        (uninitialized until `set_background()` is called).
     y1 : float array
-        the real component of the source shears
+        The real component of the source shears.
     y2 : float array
-        the imaginary component of the source shears
+        The imaginary component of the source shears.
     yt : float array
-        the source tangential shears
+        The source tangential shears.
 
     Methods
     -------
     set_background(theta1, theta2, zs, y1, y2)
-        Defines and assigns background souce data vectors to attributes of the lens object
+        Defines and assigns background souce data vectors to attributes of the lens object.
     get_background()
-        Returns the source population data vectors to the caller, as a list
+        Returns the source population data vectors to the caller, as a list.
     calc_sigma_crit()
-        Computes the critical surface density at the redshift `zl`
+        Computes the critical surface density at the redshift `zl`.
     """
     
     def __init__(self, zl, cosmo=WMAP7):
@@ -72,7 +72,7 @@ class obs_lens_system:
     def _check_sources(self):
         """
         Checks that set_background has been called (intended to be called before any
-        operations on the attributes initialized by set_background())
+        operations on the attributes initialized by set_background()).
         """
         assert(self._has_sources), 'sources undefined; first run set_background()'
         
@@ -83,26 +83,22 @@ class obs_lens_system:
         including the angular positions, redshifts, projected comoving distances from 
         the lens center in Mpc, and shear components. The user should either pass the shear 
         components `y1` and `y2`, or the tangential shear `yt`; if both or neither are passed, 
-        an exception will be raised
+        an exception will be raised.
         
         Parameters
         ----------
         theta1 : float array
-            the source lens-centric azimuthal angular coordinates, in arcseconds
+            The source lens-centric azimuthal angular coordinates, in arcseconds.
         theta2 : float_array
-            the source lens-centric coaltitude angular coordinates, in arcseconds
+            The source lens-centric coaltitude angular coordinates, in arcseconds.
         zs : float array
-            the source redshifts
+            The source redshifts.
         y1 : float array, optional
-            the shear component :math:`\\gamma_1`
+            The shear component :math:`\\gamma_1`.
         y2 : float array, optional
-            the shear component :math:`\\gamma_2`
+            The shear component :math:`\\gamma_2`.
         yt : float array, optional
-            the tangential shear :math:`\\gamma_T`
-        
-        Returns
-        -------
-        None
+            The tangential shear :math:`\\gamma_T`.
         '''
 
         # make sure shear was passed correctly -- either tangenetial, or components, not both
@@ -130,7 +126,7 @@ class obs_lens_system:
         """
         Computes background source quantites that depend on the data vectors initialized in 
         set_baclground (this function meant to be called from the setter method of each 
-        source property)
+        source property).
         """
 
         self._check_sources()
@@ -138,9 +134,7 @@ class obs_lens_system:
         # compute halo-centric projected radial separation of each source, in Mpc
         # sort all other data columns by this quantity
         self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
-                                  self._cosmo.comoving_distance(self.zl).value
-                                  
- 
+                                  self._cosmo.comoving_distance(self.zl).value         
         if(self._has_shear12):
             # compute tangential shear yt
             self._phi = np.arctan(self._theta2/self._theta1)
