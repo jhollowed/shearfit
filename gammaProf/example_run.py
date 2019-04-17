@@ -1,4 +1,6 @@
 import pdb
+import h5py
+import glob
 import cycler
 import numpy as np
 import matplotlib.pyplot as plt
@@ -64,8 +66,9 @@ def sim_example_run(halo_cutout_dir=None):
         file, containing the intrinsic halo properties from the simulation.
     """
     
-    [sim_lens, true_profile] = read_sim_data(halo_cutout_dir) 
-    fit_test_data(sim_lens, true_profile)
+    [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir) 
+    pdb.set_trace()
+    _fit_test_data(sim_lens, true_profile)
 
 
 def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
@@ -99,8 +102,7 @@ def _read_sim_data(halo_cutout_dir):
 
     # get ray-trace hdf5 and properties csv
     if(halo_cutout_dir is None):
-        halos = glob.glob('/global/homes/h/hollowed/desc_CLxCS_2019/data/*')
-        halo_cutout_dir = np.random.choice(halos, 1)[0]
+        halo_cutout_dir = '/projects/DarkUniverse_esp/jphollowed/test4/halo_4781763152100605952_0'
     
     rtfs = glob.glob('{}/*raytraced_maps.hdf5'.format(halo_cutout_dir))
     pfs = glob.glob('{}/properties.csv'.format(halo_cutout_dir))
@@ -113,12 +115,13 @@ def _read_sim_data(halo_cutout_dir):
     zl = props['halo_redshift']
     r200c = props['sod_halo_radius']
     c = props['sod_halo_cdelta']
-    cerr = props['sod_halo_cdelta_err']
+    c_err = props['sod_halo_cdelta_error']
 
-    raytrace_file = rtfs[0]
+    raytrace_file = h5py.File(rtfs[0])
     nplanes = len(list(raytrace_file.keys()))
     t1, t2, y1, y2, zs = [], [], [], [], []
 
+    # stack data from each source plane
     for i in range(nplanes):
         plane_key = list(raytrace_file.keys())[i]
         plane = raytrace_file[plane_key]
@@ -128,9 +131,15 @@ def _read_sim_data(halo_cutout_dir):
         y1 = np.hstack([y1, np.ravel(plane['shear1'])])
         y2 = np.hstack([y2, np.ravel(plane['shear2'])])
         t1 = np.hstack([t1, np.ravel(grid[0])])
-        t2 = np.hstack([t1, np.ravel(grid[1])])
+        t2 = np.hstack([t2, np.ravel(grid[1])])
         zs = np.hstack([zs, np.ones(ngp*ngp) * float(plane_key.split('_')[-1])])
     
+    # center fov and scale to arcsec
+    t1 = t1 - np.mean(t1)
+    t1 = (t1/np.max(t1))*props['boxRadius_arcsec']
+    t2 = t2 - np.mean(t2)
+    t2 = (t2/np.max(t2))*props['boxRadius_arcsec']
+
     sim_lens = obs_lens_system(zl)
     sim_lens.set_background(t1, t2, zs, y1=y1, y2=y2)
 
