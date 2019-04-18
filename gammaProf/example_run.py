@@ -46,7 +46,7 @@ def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.
     _fit_test_data(mock_lens, true_profile)
 
 
-def sim_example_run(halo_cutout_dir=None):
+def sim_example_run(halo_cutout_dir=None, max_z=None):
     """
     This function performs an example run of the package, fitting an NFW profile to background 
     source data as obtained from ray-tracing through Outer Rim lightcone halo cutouts. The process 
@@ -64,10 +64,11 @@ def sim_example_run(halo_cutout_dir=None):
         halo from those available on the filesystem (assumes the code to be running on Cori at NERSC). 
         This directory is assumed to contain an HDF5 file giving ray-traced maps, as well as a properties.csv
         file, containing the intrinsic halo properties from the simulation.
+    max_z : float
+        The maximum redshift source plane to include in the computation
     """
     
-    [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir)
-    pdb.set_trace()
+    [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir, max_z)
     _fit_test_data(sim_lens, true_profile)
 
 
@@ -125,18 +126,22 @@ def _read_sim_data(halo_cutout_dir):
     for i in range(nplanes):
         plane_key = list(raytrace_file.keys())[i]
         plane = raytrace_file[plane_key]
+        plane_z = float(plane_key.split('_')[-1])
+
+        #ignore this plane if infront of the halo
+        if(plane_z < zl): continue
        
         t1 = np.hstack([t1, plane['xr1'].value])
         t2 = np.hstack([t2, plane['xr2'].value]) 
         y1 = np.hstack([y1, plane['sr1'].value])
         y2 = np.hstack([y2, plane['sr2'].value])
-        zs = np.hstack([zs, np.ones(len(t1)-len(zs)) * float(plane_key.split('_')[-1])])
+        zs = np.hstack([zs, np.ones(len(t1)-len(zs)) * plane_z])
     
     # trim the fov borders by 10% to be safe
     mask = np.logical_and(np.abs(t1)<props['boxRadius_arcsec']*0.9, 
                           np.abs(t2)<props['boxRadius_arcsec']*0.9)
     t1 = t1[mask]
-    t1 = t1[mask]
+    t2 = t2[mask]
     zs = zs[mask]
     y1 = y1[mask]
     y2 = y2[mask]
