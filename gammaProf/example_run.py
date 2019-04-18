@@ -66,7 +66,7 @@ def sim_example_run(halo_cutout_dir=None):
         file, containing the intrinsic halo properties from the simulation.
     """
     
-    [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir) 
+    [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir)
     pdb.set_trace()
     _fit_test_data(sim_lens, true_profile)
 
@@ -102,11 +102,11 @@ def _read_sim_data(halo_cutout_dir):
 
     # get ray-trace hdf5 and properties csv
     if(halo_cutout_dir is None):
-        halo_cutout_dir = '/projects/DarkUniverse_esp/jphollowed/test4/halo_4781763152100605952_0'
+        halo_cutout_dir = '/projects/DarkUniverse_esp/jphollowed/outerRim/raytraced_halos/halo_4781763152100605952_0'
     
-    rtfs = glob.glob('{}/*raytraced_maps.hdf5'.format(halo_cutout_dir))
+    rtfs = glob.glob('{}/*lensing_mocks.hdf5'.format(halo_cutout_dir))
     pfs = glob.glob('{}/properties.csv'.format(halo_cutout_dir))
-    assert len(rtfs) == 1, "Exactly one ray-trace file is expected in {}".format(halo_cutout_dir)
+    assert len(rtfs) == 1, "Exactly one lensing mock file is expected in {}".format(halo_cutout_dir)
     assert len(pfs) == 1, "Exactly one properties file is expected in {}".format(halo_cutout_dir)
     
     # read lens properties from csv, source data from hdf5
@@ -125,20 +125,21 @@ def _read_sim_data(halo_cutout_dir):
     for i in range(nplanes):
         plane_key = list(raytrace_file.keys())[i]
         plane = raytrace_file[plane_key]
-        ngp = np.shape(plane['shear1'])[0]
-        grid = np.meshgrid(np.linspace(0,ngp-1,ngp), np.linspace(0,ngp-1,ngp))
        
-        y1 = np.hstack([y1, np.ravel(plane['shear1'])])
-        y2 = np.hstack([y2, np.ravel(plane['shear2'])])
-        t1 = np.hstack([t1, np.ravel(grid[0])])
-        t2 = np.hstack([t2, np.ravel(grid[1])])
-        zs = np.hstack([zs, np.ones(ngp*ngp) * float(plane_key.split('_')[-1])])
+        t1 = np.hstack([t1, plane['xr1'].value])
+        t2 = np.hstack([t2, plane['xr2'].value]) 
+        y1 = np.hstack([y1, plane['sr1'].value])
+        y2 = np.hstack([y2, plane['sr2'].value])
+        zs = np.hstack([zs, np.ones(len(t1)-len(zs)) * float(plane_key.split('_')[-1])])
     
-    # center fov and scale to arcsec
-    t1 = t1 - np.mean(t1)
-    t1 = (t1/np.max(t1))*props['boxRadius_arcsec']
-    t2 = t2 - np.mean(t2)
-    t2 = (t2/np.max(t2))*props['boxRadius_arcsec']
+    # trim the fov borders by 10% to be safe
+    mask = np.logical_and(np.abs(t1)<props['boxRadius_arcsec']*0.9, 
+                          np.abs(t2)<props['boxRadius_arcsec']*0.9)
+    t1 = t1[mask]
+    t1 = t1[mask]
+    zs = zs[mask]
+    y1 = y1[mask]
+    y2 = y2[mask]
 
     sim_lens = obs_lens_system(zl)
     sim_lens.set_background(t1, t2, zs, y1=y1, y2=y2)
