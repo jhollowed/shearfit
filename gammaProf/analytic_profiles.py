@@ -1,8 +1,8 @@
+import pdb
 import numpy as np
 import astropy.units as units
 import astropy.constants as const
 from astropy.cosmology import WMAP7
-import pdb
 
 '''
 This module contains a collection of ananlytic halo profile forms (currently just NFW), which 

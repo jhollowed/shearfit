@@ -1,14 +1,16 @@
 import pdb
 import copy
 import numpy as np
-from lensing_system import obs_lens_system
-from analytic_profiles import NFW
+from scipy import stats
 from scipy import optimize
-from mass_concentration import child2018
 import matplotlib.pyplot as plt
+from analytic_profiles import NFW
+from mass_concentration import child2018
+from lensing_system import obs_lens_system
 
 def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_relation=None, 
-                         bootstrap=True, bootN = 1000, bootF = 1.0, replace=True):
+                         bin_data = False, bins=None, 
+                         bootstrap=False, bootN = 1000, bootF = 1.0, replace=True):
     """
     Fits an NFW-predicted :math:`\\Delta\\Sigma(r)` profile to a background shear dataset. To use
     this function, the user should first instantiate a `obs_lens_system` object, which will hold the
@@ -34,26 +36,32 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     rad_bounds : 2-element list
         The bounds (tophat prior) for the first fitting parameter, :math:`r_{200c}`.
     conc_bounds : 2-element list, optional
-        The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to [0,10].
+        The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to `[0,10]`.
     cM_relation : string, optional
         The name of a :math:`c-M` relation to use in the fitting procedure. If `None`, then the 
         minimization will proceed with respect to both :math:`r_200c` and :math:`c`. If provided
         as a `string`, then infer the concentration from the :math:`c-M` relation on each iteration 
         of the least squares routine (in this case, the `conc_bounds` arg need not be passed). 
         Options are `{'child2018'}`. Defaults to `None`.
+    bin_data : boolean, optional
+        Whether or not to average the shears given by the `data` object in radial bins. If True, fit 
+        to the resulting binned averages rather than the input data points. Defaults to `False`.
+    bins : int or float array, optional
+        The `bins` argument to pass to `scipy.stats.binned_statistic`, if `bin_data` ia set to `True`. 
+        Defaults to `None`, though will crash if not provided while `bin_data` is `True`.
     bootstrap : boolean, optional
         Whether or not to perform fitted parameter bootstrap error estaimtion. If False, and also using 
         a c-M relation rather than fitting the concentration, then the intrinsic scatter of the c-M relation 
         is still given as an error on the best-fit `c` value. Else, no errors are given for either parameter.
-        Defaults to True.
+        Defaults to `False`.
     bootN : int, optional
         The number of realizations from the input data given by `data` to include in the bootstrap. 
-        Defaults to 1000
+        Defaults to `1000`.
     bootF : float, optional
         The fraction of the initial dataset `data` to include in each bootstrap realization. 
-        Defaults to 1.0.
+        Defaults to `1.0`.
     replace : boolean, optional
-        Whether or not to perform the bootstrap resamples with replacement. Defaults to True.
+        Whether or not to perform the bootstrap resamples with replacement. Defaults to `True`.
 
     Returns
     -------
@@ -71,6 +79,10 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     Ec = data.calc_sigma_crit()
     dSigma_data = sources['yt'] * Ec
     r = sources['r']
+    if(bin_data == True):
+        if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
+        [dSigma_data,_,_] = stats.binned_statistic(r, dSigma_data, statistic='mean', bins=bins)
+        [r,_,_] = stats.binned_statistic(r, r, statistic='mean', bins=bins)
 
     # get parameter guesses from initial NFW form
     rad_init = profile.r200c
@@ -197,7 +209,7 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
     return residuals 
 
 
-def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n = 100):
+def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n = 100, bin_data=False, bins=None):
     """
     Performs an NFW parameter sweep on :math:`r_{200c}` and :math:`c_{200c}`, evaluating
     the squared sum of residuals against the input data for each sample point in the
@@ -220,6 +232,12 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
     n : int
         The number of sample points in each dimension of the parameter grid, which will be 
         distributed linearly between the limits given by `rad_bounds` and `conc_bounds`.
+    bin_data : boolean, optional
+        Whether or not to average the shears given by the `data` object in radial bins. If True, fit 
+        to the resulting binned averages rather than the input data points. Defaults to `False`.
+    bins : int or float array, optional
+        The `bins` argument to pass to `scipy.stats.binned_statistic`, if `bin_data` ia set to `True`. 
+        Defaults to `None`, though will crash if not provided while `bin_data` is `True`.
 
     Return
     ------
@@ -238,6 +256,10 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
     Ec = data.calc_sigma_crit()
     dSigma_data = sources['yt'] * Ec
     r = sources['r']
+    if(bin_data == True):
+        if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
+        [dSigma_data,_,_] = stats.binned_statistic(r, dSigma_data, statistic='mean', bins=bins)
+        [r,_,_] = stats.binned_statistic(r, r, statistic='mean', bins=bins)
    
     cost = np.zeros((n, n))
 
