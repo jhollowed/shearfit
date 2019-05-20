@@ -1,5 +1,6 @@
 import os
 import pdb
+import sys
 import h5py
 import glob
 import cycler
@@ -13,6 +14,8 @@ from lensing_system import obs_lens_system
 from mass_concentration import child2018 as cm
 from fit_profile import fit_nfw_profile_lstq as fit
 from fit_profile import fit_nfw_profile_gridscan as fit_gs
+
+pprint = lambda s: print(s, flush=True)
 
 
 def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.5):
@@ -50,7 +53,7 @@ def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.
 
 
 def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outerRim/cutouts_raytracing/'\
-                                     'halo_4781763152100605952_0'):
+                                     'halo_4781763152100605952_0', showfig=True, stdout=True):
     """
     This function performs an example run of the package, fitting an NFW profile to background 
     source data as obtained from ray-tracing through Outer Rim lightcone halo cutouts. The process 
@@ -70,12 +73,23 @@ def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outer
         file, containing the intrinsic halo properties from the simulation.
     max_z : float
         The maximum number of lens planes used about the halo redshift in the ray tracing
+    showfig : boolean
+        Whether or not to `show` the profile fit plot. If `False`, save to `png` file instead. 
+        Defaults to `True`.
+    stdout : bool
+        Whether or not to supress print statements (useful for parallel runs). `False` means all
+        print statements will be suppressed. Defaults to `True`.
     """
     
+    global pprint
+    if(stdout == True): pprint = lambda s: print(s, flush=True)
+    else: pprint = lambda s: None
+
+    pprint('reading lensing mock data')
     [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir)
     out_dir = '{}/profile_fits'.format(halo_cutout_dir)
     if not os.path.exists(out_dir): os.makedirs(out_dir)
-    _fit_test_data(sim_lens, true_profile, showfig=True, out_dir=out_dir)
+    _fit_test_data(sim_lens, true_profile, showfig=showfig, out_dir=out_dir)
 
 
 def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
@@ -126,6 +140,7 @@ def _read_sim_data(halo_cutout_dir):
 
     # stack data from each source plane
     for i in range(nplanes):
+        if(i%10==0): pprint('reading plane {}/{}'.format(i, nplanes))
         plane_key = list(raytrace_file.keys())[i]
         plane = raytrace_file[plane_key]
         plane_z = plane['zs'][:]
@@ -173,22 +188,22 @@ def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
     dSigma_true = true_profile.delta_sigma(rsamp)
 
     # fit the concentration and radius
-    print('fitting with floating concentration')
-    fitted_profile = NFW(2.0, 2.0, zl)
-    fit(lens, fitted_profile, rad_bounds = [1, 6], conc_bounds = [2, 8], 
+    pprint('fitting with floating concentration')
+    fitted_profile = NFW(0.75, 3.0, zl)
+    fit(lens, fitted_profile, rad_bounds = [0.1, 4], conc_bounds = [1, 10], 
         bootstrap=True, bin_data=False, bins=25)
     [dSigma_fitted, dSigma_fitted_err] = fitted_profile.delta_sigma(rsamp, bootstrap=True,)
 
     # and now do it again, iteratively using a c-M relation instead of fitting for c
-    print('fitting with inferred c-M concentration')
-    fitted_cm_profile = NFW(2.0, 2.0, zl)
-    fit(lens, fitted_cm_profile, rad_bounds = [1, 6], cM_relation='child2018', 
+    pprint('fitting with inferred c-M concentration')
+    fitted_cm_profile = NFW(0.75, 3.0, zl)
+    fit(lens, fitted_cm_profile, rad_bounds = [0.1, 4], cM_relation='child2018', 
         bootstrap=True, bin_data=False, bins=25)
     [dSigma_fitted_cm, dSigma_fitted_cm_err] = fitted_cm_profile.delta_sigma(rsamp, bootstrap=True)
     
     # write out fitting result
-    print('r200c_fit = {}; c_fit = {}'.format(fitted_profile.r200c, fitted_profile.c))
-    print('r200c_cm = {}; c_cm = {}'.format(fitted_cm_profile.r200c, fitted_cm_profile.c))
+    pprint('r200c_fit = {}; c_fit = {}'.format(fitted_profile.r200c, fitted_profile.c))
+    pprint('r200c_cm = {}; c_cm = {}'.format(fitted_cm_profile.r200c, fitted_cm_profile.c))
     np.save('{}/r200c_fit.npy'.format(out_dir), fitted_profile.r200c)
     np.save('{}/r200c_cM_fit.npy'.format(out_dir), fitted_cm_profile.r200c)
     np.save('{}/c_fit.npy'.format(out_dir), fitted_profile.c)
@@ -196,10 +211,10 @@ def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
 
 
     # now do a grid scan
-    print('doing grid scan')
-    gridscan_profile = NFW(2.0, 2.0, zl)
-    grid_r_bounds = [1, 7]
-    grid_c_bounds = [0.5, 9]
+    pprint('doing grid scan')
+    gridscan_profile = NFW(0.75, 3.0, zl)
+    grid_r_bounds = [0.1, 4]
+    grid_c_bounds = [1, 10]
     [grid_pos, grid_res] = fit_gs(lens, gridscan_profile, rad_bounds = grid_r_bounds, conc_bounds = grid_c_bounds, 
                                   n=200, bin_data=False, bins=25)
     
