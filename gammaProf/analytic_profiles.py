@@ -198,10 +198,11 @@ class NFW:
                 dsig_r = dsig_r[~np.isnan(dsig_r)]
                 u = np.mean(dsig_r)
                 try:
-                    down1sig = dsig_r[ np.searchsorted(dsig_r, u) - int(np.floor(bootN*0.341)) ]
-                    up1sig = dsig_r[ np.searchsorted(dsig_r, u) + int(np.ceil(bootN*0.341)) ]
+                    down1sig = dsig_r[ np.searchsorted(dsig_r, u) - int(len(dsig_r)*0.341) ]
+                    up1sig = dsig_r[ np.searchsorted(dsig_r, u) + int(len(dsig_r)*0.341) ]
+                    dsig_stderr[i][:] = [u-down1sig, up1sig-u]
                 except IndexError:
-                    pdb.set_trace()
+                    dsig_stderr[i][:] = dsig_stderr[i-1][:]
 
                 dsig_stderr[i][:] = [u-down1sig, up1sig-u]
             

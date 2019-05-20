@@ -1,3 +1,4 @@
+import os
 import pdb
 import h5py
 import glob
@@ -48,8 +49,8 @@ def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.
     _fit_test_data(mock_lens, true_profile, showfig=True)
 
 
-def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outerRim/raytraced_halos/'\
-                                     'halo_4781763152100605952_0', max_planes=None):
+def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outerRim/cutouts_raytracing/'\
+                                     'halo_4781763152100605952_0'):
     """
     This function performs an example run of the package, fitting an NFW profile to background 
     source data as obtained from ray-tracing through Outer Rim lightcone halo cutouts. The process 
@@ -71,9 +72,10 @@ def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outer
         The maximum number of lens planes used about the halo redshift in the ray tracing
     """
     
-    [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir, max_planes)
-    _fit_test_data(sim_lens, true_profile, showfig=True, 
-                   fig_file_sfx='max{}'.format(max_planes), out_dir='{}/fits'.format(halo_cutout_dir))
+    [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir)
+    out_dir = '{}/profile_fits'.format(halo_cutout_dir)
+    if not os.path.exists(out_dir): os.makedirs(out_dir)
+    _fit_test_data(sim_lens, true_profile, showfig=True, out_dir=out_dir)
 
 
 def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
@@ -103,13 +105,10 @@ def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
     return [mock_lens, true_profile]
     
 
-def _read_sim_data(halo_cutout_dir, max_planes=None):
+def _read_sim_data(halo_cutout_dir):
 
     # get ray-trace hdf5 and properties csv
-    if(max_planes is not None):
-        rtfs = glob.glob('{}/*_max{}_lensing_mocks.hdf5'.format(halo_cutout_dir, max_planes))
-    else:
-        rtfs = glob.glob('{}/*lensing_mocks.hdf5'.format(halo_cutout_dir))
+    rtfs = glob.glob('{}/*lensing_mocks.hdf5'.format(halo_cutout_dir))
     pfs = glob.glob('{}/properties.csv'.format(halo_cutout_dir))
     assert len(pfs) == 1, "Exactly one properties file is expected in {}".format(halo_cutout_dir)
     
@@ -120,8 +119,8 @@ def _read_sim_data(halo_cutout_dir, max_planes=None):
     r200c = props['sod_halo_radius']
     c = props['sod_halo_cdelta']
     c_err = props['sod_halo_cdelta_error']
-
-    raytrace_file = h5py.File(rtfs[0])
+    
+    raytrace_file = h5py.File(rtfs[0], 'r')
     nplanes = len(list(raytrace_file.keys()))
     t1, t2, y1, y2, zs = [], [], [], [], []
 
@@ -129,15 +128,15 @@ def _read_sim_data(halo_cutout_dir, max_planes=None):
     for i in range(nplanes):
         plane_key = list(raytrace_file.keys())[i]
         plane = raytrace_file[plane_key]
-        plane_z = float(plane_key.split('_')[-1])
+        plane_z = plane['zs'][:]
 
         #ignore this plane if infront of the halo
         if(plane_z < zl): continue
        
-        t1 = np.hstack([t1, plane['xr1'].value])
-        t2 = np.hstack([t2, plane['xr2'].value]) 
-        y1 = np.hstack([y1, plane['sr1'].value])
-        y2 = np.hstack([y2, plane['sr2'].value])
+        t1 = np.hstack([t1, plane['xr1'][:]])
+        t2 = np.hstack([t2, plane['xr2'][:]]) 
+        y1 = np.hstack([y1, plane['sr1'][:]])
+        y2 = np.hstack([y2, plane['sr2'][:]])
         zs = np.hstack([zs, np.ones(len(t1)-len(zs)) * plane_z])
     
     # trim the fov borders by 10% to be safe
@@ -153,11 +152,12 @@ def _read_sim_data(halo_cutout_dir, max_planes=None):
     sim_lens.set_background(t1, t2, zs, y1=y1, y2=y2)
 
     true_profile = NFW(r200c, c, zl, c_err = c_err)
+    raytrace_file.close()
     
     return [sim_lens, true_profile]
 
     
-def _fit_test_data(lens, true_profile, showfig=False, fig_file_sfx='', out_dir='.'):
+def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
 
     zl = lens.zl
     r200c = true_profile.r200c
@@ -175,14 +175,25 @@ def _fit_test_data(lens, true_profile, showfig=False, fig_file_sfx='', out_dir='
     # fit the concentration and radius
     print('fitting with floating concentration')
     fitted_profile = NFW(2.0, 2.0, zl)
-    fit(lens, fitted_profile, rad_bounds = [1, 6], conc_bounds = [2, 8], bootstrap=True, bin_data=True, bins=25)
+    fit(lens, fitted_profile, rad_bounds = [1, 6], conc_bounds = [2, 8], 
+        bootstrap=True, bin_data=False, bins=25)
     [dSigma_fitted, dSigma_fitted_err] = fitted_profile.delta_sigma(rsamp, bootstrap=True,)
 
     # and now do it again, iteratively using a c-M relation instead of fitting for c
     print('fitting with inferred c-M concentration')
     fitted_cm_profile = NFW(2.0, 2.0, zl)
-    fit(lens, fitted_cm_profile, rad_bounds = [1, 6], cM_relation='child2018', bootstrap=True, bin_data=True, bins=25)
+    fit(lens, fitted_cm_profile, rad_bounds = [1, 6], cM_relation='child2018', 
+        bootstrap=True, bin_data=False, bins=25)
     [dSigma_fitted_cm, dSigma_fitted_cm_err] = fitted_cm_profile.delta_sigma(rsamp, bootstrap=True)
+    
+    # write out fitting result
+    print('r200c_fit = {}; c_fit = {}'.format(fitted_profile.r200c, fitted_profile.c))
+    print('r200c_cm = {}; c_cm = {}'.format(fitted_cm_profile.r200c, fitted_cm_profile.c))
+    np.save('{}/r200c_fit.npy'.format(out_dir), fitted_profile.r200c)
+    np.save('{}/r200c_cM_fit.npy'.format(out_dir), fitted_cm_profile.r200c)
+    np.save('{}/c_fit.npy'.format(out_dir), fitted_profile.c)
+    np.save('{}/c_cM_fit.npy'.format(out_dir), fitted_cm_profile.c)
+
 
     # now do a grid scan
     print('doing grid scan')
@@ -190,11 +201,8 @@ def _fit_test_data(lens, true_profile, showfig=False, fig_file_sfx='', out_dir='
     grid_r_bounds = [1, 7]
     grid_c_bounds = [0.5, 9]
     [grid_pos, grid_res] = fit_gs(lens, gridscan_profile, rad_bounds = grid_r_bounds, conc_bounds = grid_c_bounds, 
-                                  n=200, bin_data=True, bins=25)
-
-    print('r200c_fit = {}; c_fit = {}'.format(fitted_profile.r200c, fitted_profile.c))
-    print('r200c_cm = {}; c_cm = {}'.format(fitted_cm_profile.r200c, fitted_cm_profile.c))
-
+                                  n=200, bin_data=False, bins=25)
+    
     # visualize results... 
     rc('text', usetex=True)
     color = plt.cm.plasma(np.linspace(0.2, 0.8, 3))
@@ -203,10 +211,10 @@ def _fit_test_data(lens, true_profile, showfig=False, fig_file_sfx='', out_dir='
     # plot sources vs truth and both fits
     f = plt.figure(figsize=(12,6))
     ax = f.add_subplot(121)
-    #ax.plot(r, yt*sigmaCrit, 'xk', 
-    #        label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$', alpha=0.33)
-    ax.plot(binned_r[0], binned_dsig[0], '-xk', 
-            label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$')
+    ax.plot(r, yt*sigmaCrit, 'xk', 
+            label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$', alpha=0.33)
+    #ax.plot(binned_r[0], binned_dsig[0], '-xk', 
+    #        label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$')
     ax.plot(rsamp, dSigma_true, '--', label=r'$\Delta\Sigma_\mathrm{{NFW}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
                                             .format(r200c, c), color=color[0], lw=2)
     ax.plot(rsamp, dSigma_fitted, label=r'$\Delta\Sigma_\mathrm{{fit}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
@@ -259,4 +267,4 @@ def _fit_test_data(lens, true_profile, showfig=False, fig_file_sfx='', out_dir='
 
     plt.tight_layout()
     if(showfig): plt.show()
-    else: f.savefig('{}/shearprof_fit_{}.png'.format(out_dir, fig_file_sfx), dpi=200)
+    else: f.savefig('{}/shearprof_fit.png'.format(out_dir), dpi=200)
