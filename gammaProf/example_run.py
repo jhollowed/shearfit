@@ -53,7 +53,8 @@ def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.
 
 
 def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outerRim/cutouts_raytracing/'\
-                                     'halo_4781763152100605952_0', showfig=True, stdout=True):
+                                     'halo_4781763152100605952_0', 
+                    makeplot = True, showfig=True, stdout=True, bin_data=True, rbins=25, rmin=0):
     """
     This function performs an example run of the package, fitting an NFW profile to background 
     source data as obtained from ray-tracing through Outer Rim lightcone halo cutouts. The process 
@@ -73,12 +74,24 @@ def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outer
         file, containing the intrinsic halo properties from the simulation.
     max_z : float
         The maximum number of lens planes used about the halo redshift in the ray tracing
+    makeplot : boolean
+        Whether or not to make render a plot. If `True`, perform a  grid scan in addition to the 
+        two profile fits to plot residuals over parameter space. If `False`, return after fit and
+        skip parameter sweep, plot nothing. Defaults to `True`.
     showfig : boolean
         Whether or not to `show` the profile fit plot. If `False`, save to `png` file instead. 
         Defaults to `True`.
     stdout : bool
         Whether or not to supress print statements (useful for parallel runs). `False` means all
         print statements will be suppressed. Defaults to `True`.
+    bin_data : bool
+        whether or not to fit to shears averaged in radial bins, rather than to each individual source.
+        Defaults to True.
+    rbins : int
+        Number of bins distribute over the radial range of the data, if `bin_data == True`.
+    rmin : float
+        The minimum radial distance of sources to include in the fit (e.g. `rmin = 0.3`) will
+        remove the inner 300kpc of source information. Defaults to `0`.
     """
     
     global pprint
@@ -89,7 +102,9 @@ def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outer
     [sim_lens, true_profile] = _read_sim_data(halo_cutout_dir)
     out_dir = '{}/profile_fits'.format(halo_cutout_dir)
     if not os.path.exists(out_dir): os.makedirs(out_dir)
-    _fit_test_data(sim_lens, true_profile, showfig=showfig, out_dir=out_dir)
+    _fit_test_data(sim_lens, true_profile, showfig=showfig, 
+                   out_dir=out_dir, makeplot = makeplot, bin_data=bin_data, 
+                   rbins=rbins, rmin=rmin)
 
 
 def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
@@ -172,7 +187,8 @@ def _read_sim_data(halo_cutout_dir):
     return [sim_lens, true_profile]
 
     
-def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
+def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.', 
+                   bin_data=True, rbins=25, rmin = 0):
 
     zl = lens.zl
     r200c = true_profile.r200c
@@ -181,8 +197,14 @@ def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
     sigmaCrit = lens.calc_sigma_crit()
     yt = bg['yt']
     r = bg['r']
-    binned_dsig = stats.binned_statistic(r, yt*sigmaCrit, statistic='mean', bins=25)
-    binned_r = stats.binned_statistic(r, r, statistic='mean', bins=25)
+
+    # do inner radius cut and bin data
+    radial_mask = (r >= rmin)
+    yt = yt[radial_mask]
+    sigmaCrit = sigmaCrit[radial_mask]
+    r = r[radial_mask]
+    binned_dsig = stats.binned_statistic(r, yt*sigmaCrit, statistic='mean', bins=rbins)
+    binned_r = stats.binned_statistic(r, r, statistic='mean', bins=rbins)
 
     rsamp = np.linspace(min(r), max(r), 1000)
     dSigma_true = true_profile.delta_sigma(rsamp)
@@ -191,24 +213,26 @@ def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
     pprint('fitting with floating concentration')
     fitted_profile = NFW(0.75, 3.0, zl)
     fit(lens, fitted_profile, rad_bounds = [0.1, 4], conc_bounds = [1, 10], 
-        bootstrap=True, bin_data=False, bins=25)
+        bootstrap=True, bin_data=bin_data, bins=rbins)
     [dSigma_fitted, dSigma_fitted_err] = fitted_profile.delta_sigma(rsamp, bootstrap=True,)
 
     # and now do it again, iteratively using a c-M relation instead of fitting for c
     pprint('fitting with inferred c-M concentration')
     fitted_cm_profile = NFW(0.75, 3.0, zl)
     fit(lens, fitted_cm_profile, rad_bounds = [0.1, 4], cM_relation='child2018', 
-        bootstrap=True, bin_data=False, bins=25)
+        bootstrap=True, bin_data=bin_data, bins=rbins)
     [dSigma_fitted_cm, dSigma_fitted_cm_err] = fitted_cm_profile.delta_sigma(rsamp, bootstrap=True)
     
     # write out fitting result
     pprint('r200c_fit = {}; c_fit = {}'.format(fitted_profile.r200c, fitted_profile.c))
     pprint('r200c_cm = {}; c_cm = {}'.format(fitted_cm_profile.r200c, fitted_cm_profile.c))
-    np.save('{}/r200c_fit.npy'.format(out_dir), fitted_profile.r200c)
-    np.save('{}/r200c_cM_fit.npy'.format(out_dir), fitted_cm_profile.r200c)
-    np.save('{}/c_fit.npy'.format(out_dir), fitted_profile.c)
-    np.save('{}/c_cM_fit.npy'.format(out_dir), fitted_cm_profile.c)
+    np.save('{}/r200c_fit_{}bins_{}rmin.npy'.format(out_dir, rbins, rmin), fitted_profile.r200c)
+    np.save('{}/r200c_cM_fit_{}bins_{}rmin.npy'.format(out_dir, rbins, rmin), fitted_cm_profile.r200c)
+    np.save('{}/c_fit_{}bins_{}rmin.npy'.format(out_dir, rbins, rmin), fitted_profile.c)
+    np.save('{}/c_cM_fit_{}bins_{}rmin.npy'.format(out_dir, rbins, rmin), fitted_cm_profile.c)
 
+    # all done if not plotting
+    if(not makeplot): return
 
     # now do a grid scan
     pprint('doing grid scan')
@@ -216,7 +240,7 @@ def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
     grid_r_bounds = [0.1, 4]
     grid_c_bounds = [1, 10]
     [grid_pos, grid_res] = fit_gs(lens, gridscan_profile, rad_bounds = grid_r_bounds, conc_bounds = grid_c_bounds, 
-                                  n=200, bin_data=False, bins=25)
+                                  n=200, bin_data=bin_data, bins=rbins)
     
     # visualize results... 
     rc('text', usetex=True)
@@ -226,10 +250,10 @@ def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
     # plot sources vs truth and both fits
     f = plt.figure(figsize=(12,6))
     ax = f.add_subplot(121)
-    ax.plot(r, yt*sigmaCrit, 'xk', 
-            label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$', alpha=0.33)
-    #ax.plot(binned_r[0], binned_dsig[0], '-xk', 
-    #        label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$')
+    #ax.plot(r, yt*sigmaCrit, 'xk', 
+    #        label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$', alpha=0.33)
+    ax.plot(binned_r[0], binned_dsig[0], '-xk', 
+            label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$')
     ax.plot(rsamp, dSigma_true, '--', label=r'$\Delta\Sigma_\mathrm{{NFW}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
                                             .format(r200c, c), color=color[0], lw=2)
     ax.plot(rsamp, dSigma_fitted, label=r'$\Delta\Sigma_\mathrm{{fit}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
@@ -282,4 +306,4 @@ def _fit_test_data(lens, true_profile, showfig=False, out_dir='.'):
 
     plt.tight_layout()
     if(showfig): plt.show()
-    else: f.savefig('{}/shearprof_fit.png'.format(out_dir), dpi=200)
+    else: f.savefig('{}/{}_shearprof_fit_{}bins_{}rmin.png'.format(out_dir, zl, rbins, rmin), dpi=200)
