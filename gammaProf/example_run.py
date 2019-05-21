@@ -155,7 +155,6 @@ def _read_sim_data(halo_cutout_dir):
 
     # stack data from each source plane
     for i in range(nplanes):
-        if(i%10==0): pprint('reading plane {}/{}'.format(i, nplanes))
         plane_key = list(raytrace_file.keys())[i]
         plane = raytrace_file[plane_key]
         plane_z = plane['zs'][:]
@@ -199,6 +198,7 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     r = bg['r']
 
     # do inner radius cut and bin data
+    pprint('doing radial masking and binning')
     radial_mask = (r >= rmin)
     yt = yt[radial_mask]
     sigmaCrit = sigmaCrit[radial_mask]
