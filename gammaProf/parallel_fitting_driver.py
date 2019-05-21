@@ -12,7 +12,7 @@ def parallel_profile_fit(lensing_dir):
     # toggle this on to test communication without actually performing fits
     dry_run = False
     # toggle this on to redo fits even if files exist
-    overwrite = True
+    overwrite = False
 
     # -----------------------------------------
     # ---------- define communicator ----------
@@ -88,7 +88,7 @@ def parallel_profile_fit(lensing_dir):
             sys.stdout.flush()
 
         
-        if( (len(glob.glob('{}/profile_fits/*.npy'.format(cutout))) < 4 or overwrite) and not dry_run):
+        if( (len(glob.glob('{}/profile_fits/*0.3rmin.npy'.format(cutout))) < 4 or overwrite) and not dry_run):
             fitter.sim_example_run(halo_cutout_dir = cutout, makeplot=makeplot, showfig=False, 
                                    stdout=(rank==0), bin_data=True, rbins=30, rmin=0.3)
     

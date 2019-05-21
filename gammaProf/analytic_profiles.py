@@ -204,7 +204,6 @@ class NFW:
                 except IndexError:
                     dsig_stderr[i][:] = dsig_stderr[i-1][:]
 
-                dsig_stderr[i][:] = [u-down1sig, up1sig-u]
             
             # restore profile and compute delta sigma; return
             self.r200c = r200c
