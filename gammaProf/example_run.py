@@ -10,6 +10,7 @@ import matplotlib as mpl
 from matplotlib import rc
 import matplotlib.pyplot as plt
 from analytic_profiles import NFW
+from astropy.cosmology import WMAP7
 from lensing_system import obs_lens_system
 from mass_concentration import child2018 as cm
 from fit_profile import fit_nfw_profile_lstq as fit
@@ -54,7 +55,7 @@ def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.
 
 def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outerRim/cutouts_raytracing/'\
                                      'halo_4781763152100605952_0', 
-                    makeplot = True, showfig=True, stdout=True, bin_data=True, rbins=25, rmin=0):
+                    makeplot = True, showfig=True, stdout=True, bin_data=False, rbins=25, rmin=0):
     """
     This function performs an example run of the package, fitting an NFW profile to background 
     source data as obtained from ray-tracing through Outer Rim lightcone halo cutouts. The process 
@@ -140,7 +141,7 @@ def _read_sim_data(halo_cutout_dir):
     rtfs = glob.glob('{}/*lensing_mocks.hdf5'.format(halo_cutout_dir))
     pfs = glob.glob('{}/properties.csv'.format(halo_cutout_dir))
     assert len(pfs) == 1, "Exactly one properties file is expected in {}".format(halo_cutout_dir)
-    
+
     # read lens properties from csv, source data from hdf5
     props_file = pfs[0]
     props = np.genfromtxt(props_file, delimiter=',', names=True)
@@ -148,6 +149,9 @@ def _read_sim_data(halo_cutout_dir):
     r200c = props['sod_halo_radius']
     c = props['sod_halo_cdelta']
     c_err = props['sod_halo_cdelta_error']
+    m200c = props['sod_halo_mass']
+    true_profile = NFW(r200c, c, zl, c_err = c_err)
+    pdb.set_trace()
     
     raytrace_file = h5py.File(rtfs[0], 'r')
     nplanes = len(list(raytrace_file.keys()))
@@ -180,7 +184,6 @@ def _read_sim_data(halo_cutout_dir):
     sim_lens = obs_lens_system(zl)
     sim_lens.set_background(t1, t2, zs, y1=y1, y2=y2)
 
-    true_profile = NFW(r200c, c, zl, c_err = c_err)
     raytrace_file.close()
     
     return [sim_lens, true_profile]
@@ -272,6 +275,8 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     ax.legend(fontsize=14, loc='upper right')
     ax.set_xlabel(r'$r\>\>\lbrack\mathrm{Mpc}\rbrack$', fontsize=14)
     ax.set_ylabel(r'$\Delta\Sigma\>\>\lbrack\mathrm{M}_\odot\mathrm{pc}^{-2}\rbrack$', fontsize=14)
+
+    pdb.set_trace()
 
 
     # plot fit cost in the radius-concentration plane

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='gammaProf',
-    version='0.1',
+    version='0.2',
     description='Dark matter halo shear profile fitting code assuming an NFW form',
     url='https://github.com/jhollowed/gammaProf',
     author='Joe Hollowed',

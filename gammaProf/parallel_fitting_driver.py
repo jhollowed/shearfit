@@ -12,7 +12,7 @@ def parallel_profile_fit(lensing_dir):
     # toggle this on to test communication without actually performing fits
     dry_run = False
     # toggle this on to redo fits even if files exist
-    overwrite = False
+    overwrite = True
 
     # -----------------------------------------
     # ---------- define communicator ----------
@@ -28,23 +28,28 @@ def parallel_profile_fit(lensing_dir):
     # --------------------------------------
     # ---------- find all cutouts ----------
     all_cutouts = np.array(glob.glob('{}/halo*'.format(lensing_dir)))
-  
+
 
     # ----------------------------------------------------------------------
     # ---------- remove cutouts with missing or incomplete mocks -----------
     if(rank == 0): 
         print('found {} total halo mocks'.format(len(all_cutouts))) 
         print('removing empty and truncated cutouts') 
-    empty_mask = np.array([len(glob.glob('{}/*mock*'.format(c))) != 0 for c in all_cutouts])
+    nofile_mask = np.array([len(glob.glob('{}/*mock*'.format(c))) != 0 for c in all_cutouts])
+    all_cutouts = all_cutouts[nofile_mask]
+    cutout_mock_planes = np.array( [[int(s.split('plane')[-1]) 
+                                        for s in list(h5py.File(glob.glob(
+                                        '{}/*lensing_mocks.hdf5'.format(c))[0], 'r').keys())]
+                                        for c in all_cutouts] )
+    empty_mask = [len(plane) > 0 for plane in cutout_mock_planes]
     all_cutouts = all_cutouts[empty_mask]
+    cutout_mock_planes = cutout_mock_planes[empty_mask]
     
     cutout_dens_depth = np.array( [max([int(s.split('plane')[-1].split('_')[0]) 
                                         for s in glob.glob('{}/dtfe_dens/*plane*'.format(c))])
                                         for c in all_cutouts] )
-    cutout_mock_depth = np.array( [max([int(s.split('plane')[-1]) 
-                                        for s in list(h5py.File(glob.glob(
-                                             '{}/*lensing_mocks.hdf5'.format(c))[0], 'r').keys())])
-                                        for c in all_cutouts] )
+    cutout_mock_depth = np.array( [max(planes) for planes in cutout_mock_planes] )
+
     truncated_mask = np.array( [cutout_dens_depth[i] == cutout_mock_depth[i] 
                                 for i in range(len(all_cutouts))] )
     all_cutouts = all_cutouts[truncated_mask]
@@ -76,10 +81,10 @@ def parallel_profile_fit(lensing_dir):
     
     start = time.time()
     for i in range(len(this_rank_halos)):
-        
+
         cutout = this_rank_halos[i]
         mass = np.genfromtxt('{}/properties.csv'.format(cutout), delimiter=',', names=True)['sod_halo_mass']
-        if(np.log10(mass) > 14.5) : makeplot=True
+        if(np.log10(mass) > 14.3) : makeplot=True
         else: makeplot=False
         
         if(rank==0): 
@@ -87,9 +92,8 @@ def parallel_profile_fit(lensing_dir):
                     i+1, len(this_rank_halos), mass))
             sys.stdout.flush()
 
-        
         if( (len(glob.glob('{}/profile_fits/*0.3rmin.npy'.format(cutout))) < 4 or overwrite) and not dry_run):
-            fitter.sim_example_run(halo_cutout_dir = cutout, makeplot=makeplot, showfig=False, 
+            fitter.sim_example_run(halo_cutout_dir = cutout, makeplot=makeplot, showfig=True, 
                                    stdout=(rank==0), bin_data=True, rbins=30, rmin=0.3)
     
     # -------------------------------------------------------------------------------

@@ -25,25 +25,25 @@ class NFW:
     Parameters
     ----------
     r200c : float
-        The radius containing mass :math:`M_{200c}`, or an average density of 
-        :math:`200\\rho_\\text{crit}`.
+        The comoving radius containing mass :math:`M_{200c}`, or an average density of 
+        :math:`200\\rho_\\text{crit}`, in :math:`Mpc/h`.
     c : float 
         The concentration.
     zl : float 
         The source redshift.
     r200c_err : float, optional
-        The 1-sigma error in the radius. Defaults to 0.
+        The 1-sigma error in the radius, in :math:`Mpc/h`. Defaults to 0.
     c_err : float, optional
         The 1-sigma error in the concentration. Defaults to 0.
     cosmo : object, optional
-        An astropy cosmology object. Defaults to WMAP7.
+        An AstroPy `cosmology` object. Defaults to `WMAP7`.
     
     Attributes
     ----------
     rs : float
-        The scale radius, `r200c / c`.
+        The scale radius, `r200c / c` in comoving :math:`Mpc/h`.
     x : float array
-        The normalized radii `r/rs` for any input `r` 
+        The dimensionless radii `r/rs` for any input `r` 
         (not initialized until `delta_sigma()` is called).
 
     Methods
@@ -52,7 +52,7 @@ class NFW:
         Computes :math:`\\Delta\\Sigma(r)` for an NFW lens, given sources at projected 
         comoving radii :math:`r`.
     radius_to_mass():
-        Converts the :math:`r_{200c}` radius of the halo to a mass
+        Converts the :math:`r_{200c}` radius of the halo to a mass in :math:`M_\\odot/h`
     """
 
     def __init__(self, r200c, c, zl, r200c_err=0, c_err=0, cosmo=WMAP7): 
@@ -89,15 +89,15 @@ class NFW:
         Returns
         -------
         m200c : float
-            The halo mass :math:`M_{200c}` in units of :math:`M_\\odot`.
+            The halo mass :math:`M_{200c}` in units of :math:`M_\\odot/h`.
         """
        
         # critical density in M_sun / Mpc^3
-        cm_per_Mpc = units.Mpc.to('cm')
-        kg_per_msun = const.M_sun.value
-        rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
+        rho_crit = self.cosmo.critical_density(self.zl)
+        rho_crit = rho_crit.to(units.Msun/units.Mpc**3).value / self.cosmo.h**2
+        a = 1/(1+self.zl)
 
-        m200c = (4/3) * np.pi * self._r200c**3 * rho_crit
+        m200c = (4/3) * np.pi * (self._r200c * a)**3 * (rho_crit * 200)
         return m200c
 
 
@@ -144,13 +144,13 @@ class NFW:
         This function does not perform the final scaling by :math:`\\Sigma_{\\text{critical}}`, 
         which would result in the tangential shear :math:`\\gamma_T = \\Delta\\Sigma/\\Sigma_\\text{c}`; 
         :math:`\\Delta\\Sigma`, rather, is the same for an identical lens, regradless of the lens or 
-        soure redshifts. Use the methods provided in `gammaProf.cluster.lens` to perform the scaling and 
+        soure redshifts. Use the methods provided in `gammaProf.lensing_system` to perform the scaling and 
         fit to data.
         
         Parameters
         ----------
         r : float array
-            Comoving projected radius relative to the center of the lens; 
+            Comoving projected radius relative to the center of the lens, in :math:`Mpc/h`; 
             :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`.
         bootstrap : boolean, optional
             Whether or not to perform a bootstrap resampling of the :math:`r_{200c}` and :math:`c`
