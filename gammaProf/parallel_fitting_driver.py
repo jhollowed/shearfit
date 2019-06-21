@@ -84,7 +84,7 @@ def parallel_profile_fit(lensing_dir):
 
         cutout = this_rank_halos[i]
         mass = np.genfromtxt('{}/properties.csv'.format(cutout), delimiter=',', names=True)['sod_halo_mass']
-        if(np.log10(mass) > 14.3) : makeplot=True
+        if(np.log10(mass) > 14.5) : makeplot=True
         else: makeplot=False
         
         if(rank==0): 
@@ -93,7 +93,7 @@ def parallel_profile_fit(lensing_dir):
             sys.stdout.flush()
 
         if( (len(glob.glob('{}/profile_fits/*0.3rmin.npy'.format(cutout))) < 4 or overwrite) and not dry_run):
-            fitter.sim_example_run(halo_cutout_dir = cutout, makeplot=makeplot, showfig=True, 
+            fitter.sim_example_run(halo_cutout_dir = cutout, makeplot=makeplot, showfig=False, 
                                    stdout=(rank==0), bin_data=True, rbins=30, rmin=0.3)
     
     # -------------------------------------------------------------------------------

@@ -61,7 +61,7 @@ class NFW:
         self.zl = zl
         self.c_err = c_err
         self.r200c_err = r200c_err
-        self.cosmo = cosmo
+        self._cosmo = cosmo
         self._rs = r200c / c
         self._x = None
 
@@ -92,9 +92,9 @@ class NFW:
             The halo mass :math:`M_{200c}` in units of :math:`M_\\odot/h`.
         """
        
-        # critical density in M_sun / Mpc^3
-        rho_crit = self.cosmo.critical_density(self.zl)
-        rho_crit = rho_crit.to(units.Msun/units.Mpc**3).value / self.cosmo.h**2
+        # critical density in proper (M_sun/h) / (Mpc/h)^3
+        rho_crit = self._cosmo.critical_density(self.zl)
+        rho_crit = rho_crit.to(units.Msun/units.Mpc**3).value / self._cosmo.h**2
         a = 1/(1+self.zl)
 
         m200c = (4/3) * np.pi * (self._r200c * a)**3 * (rho_crit * 200)
@@ -164,7 +164,7 @@ class NFW:
         Returns
         -------
         float arry or list of float arrays
-            The modified surface density :math:`\\Delta\\Sigma` in :math:`M_{\\odot}/\\text{pc}^2`, 
+            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`, 
             for each value of `r`. If `bootstrap` is `True`, then pack this array into a two-element 
             list, which is followed by the estaimted :math:`1\\sigma` error at each of those locations.
         """
@@ -173,8 +173,10 @@ class NFW:
             return self._delta_sigma(r)
         
         else:
+            if(not (self.r200c_err != 0 and self.c_err != 0)):
+                pdb.set_trace()
             assert self.r200c_err != 0 and self.c_err != 0, "bootstrap option should be "\
-                   "disabled if radius and concentration errors are zero"
+                   "disabled if radius or concentration errors are zero"
             
             # prep bootstrap and save current radius and concentration to restore after resampling
             r200c = self.r200c
@@ -224,26 +226,32 @@ class NFW:
         ----------
         r : float array
             Comoving projected radius relative to the center of the lens; 
-            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`.
+            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc/h`.
         
         Returns
         -------
         dSigma : float array
-            The modified surface density :math:`\\Delta\\Sigma` in :math:`M_{\\odot}/\\text{pc}^2`.
+            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`
         """
 
         x = r / self._rs
+        a = 1/(1+self.zl)
 
-        # unit conversion factors
-        cm_per_Mpc = units.Mpc.to('cm')
-        kg_per_msun = const.M_sun.value
-        pc_per_Mpc = 1e12
-
-        # del_c NFW param, 
-        # critical density rho_crit in M_sun Mpc^-3,
-        # modified surface density DSigma; rightmost factor scales Mpc to pc
+        # define del_c NFW param, 
+        # critical density rho_crit in proper M_sun pc^-3,
         del_c = (200/3) * self._c**3 / (np.log(1+self._c) - self.c/(1+self._c))
-        rho_crit = self.cosmo.critical_density(self.zl).value * (cm_per_Mpc**3 / (kg_per_msun*1000))
-        dSigma = ((self._rs*del_c*rho_crit) * self._g(x)) / pc_per_Mpc
+        rho_crit = self._cosmo.critical_density(self.zl)
+        
+        # 1/h^2 in rho_crit to get units to match radius
+        # 1/a^3 in rho_crit to get comoving volume
+        # 1/1e6 in rs to get radius in pc
+        rho_crit = rho_crit.to(units.Msun/units.pc**3).value / self._cosmo.h**2
+        rho_crit = rho_crit / a**3
+        rs = self._rs / 1e6
+
+        pdb.set_trace()
+        
+        # comoving mean surface density DSigma
+        dSigma = (rs * del_c * rho_crit) * self._g(x) 
 
         return dSigma

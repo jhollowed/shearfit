@@ -16,7 +16,7 @@ class obs_lens_system:
     zl : float
         The redshift of the lens.
     cosmo : object, optional
-        An astropy cosmology object (defaults to WMAP7).
+        An astropy cosmology object (defaults to `WMAP7`).
 
     Attributes
     ----------
@@ -35,7 +35,7 @@ class obs_lens_system:
         Redshifts of background sources
         (uninitialized until `set_background()` is called).
     r : float array
-        Projected separation of each source at the redshift `zl`, in comoving Mpc
+        Projected separation of each source at the redshift `zl`, in comoving :math:`\\text{Mpc}/h`
         (uninitialized until `set_background()` is called).
     y1 : float array
         The real component of the source shears.
@@ -81,9 +81,9 @@ class obs_lens_system:
         '''
         Defines and assigns background souce data vectors to attributes of the lens object, 
         including the angular positions, redshifts, projected comoving distances from 
-        the lens center in Mpc, and shear components. The user should either pass the shear 
-        components `y1` and `y2`, or the tangential shear `yt`; if both or neither are passed, 
-        an exception will be raised.
+        the lens center in comoving :math:`\\text{Mpc}/h`, and shear components. The user 
+        should either pass the shear components `y1` and `y2`, or the tangential shear `yt`; 
+        if both or neither are passed, an exception will be raised.
         
         Parameters
         ----------
@@ -131,10 +131,10 @@ class obs_lens_system:
 
         self._check_sources()
         
-        # compute halo-centric projected radial separation of each source, in Mpc
+        # compute halo-centric projected radial separation of each source, in comoving Mpc/h
         # sort all other data columns by this quantity
         self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
-                                  self._cosmo.comoving_distance(self.zl).value         
+                                  self._cosmo.comoving_distance(self.zl).value * self._cosmo.h 
         if(self._has_shear12):
             # compute tangential shear yt
             self._phi = np.arctan(self._theta2/self._theta1)
@@ -157,9 +157,9 @@ class obs_lens_system:
             then the contents of the return array is 
             [theta1, theta2, r, zs, y1, y2, yt], where theta1 and theta2 are the 
             halo-centric angular positions of the sources in arcseconds, r is the 
-            halo-centric projected radial distance of each source in Mpc, zs are 
-            the source redshifts, y1 and y2 are the shear components of the sources, 
-            and yt are the source tangential shears.
+            halo-centric projected radial distance of each source in comoving 
+            :math:`\\text{Mpc}/h`, zs are the source redshifts, y1 and y2 are the 
+            shear components of the sources, and yt are the source tangential shears.
             If only the tangential shear is being used, then y1 and y2 are omitted
         '''
         self._check_sources()
@@ -241,7 +241,7 @@ class obs_lens_system:
     def calc_sigma_crit(self, zs=None):
         '''
         Computes :math:`\\Sigma_\\text{c}(z_s)`, the critical surface density as a function of source
-        redshift :math:`z_s`, at the lens redshift :math:`z_l`, in :math:`M_{\\odot}/\\text{pc}^2`, 
+        redshift :math:`z_s`, at the lens redshift :math:`z_l`, in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`, 
         assuming a flat cosmology
 
         Parameters
@@ -253,31 +253,30 @@ class obs_lens_system:
         Returns
         -------
         Sigma_crit : float or float array 
-            The critical surface density, :math:`\\Sigma_\\text{c}`, in :math:`M_{\\odot}/\\text{pc}^2` 
+            The critical surface density, :math:`\\Sigma_\\text{c}`, in comoving
+            :math:(`M_{\\odot}/h)/(\\text{pc}/h)^2` 
         '''
         
         self._check_sources()
         if(zs is None): zs = self._zs
-
-        # unit conversions and scale factors
-        m_per_mpc = units.Mpc.to('m')
-        s_per_gyr = units.Gyr.to('s')
-        kg_per_msun = const.M_sun.value
-        pc_per_Mpc = 1e12
-        a_zl = self._cosmo.scale_factor(self.zl)
+        
+        # scale factors
+        a_l = 1/(1+self.zl)
+        a_s = 1/(1+zs)
 
         # G in comoving Mpc^3 M_sun^-1 Gyr^-2,
         # speed of light C in comoving Mpc Gyr^-1
-        # comoving distance to lens Dl and source Ds in Mpc
+        # distance to lens Dl and source Ds in comoving Mpc
         # --> warning: this assumes a flat cosmology; or that angular diamter distance = proper distance
-        G = const.G.value * ((s_per_gyr**2 * kg_per_msun)/m_per_mpc**3)
-        C = const.c.value * (s_per_gyr/m_per_mpc)
-        Ds = self._cosmo.angular_diameter_distance(zs).value
-        Dl = self._cosmo.angular_diameter_distance(self.zl).value
+        G = const.G.to(units.Mpc**3 / (units.M_sun * units.Gyr**2)).value / (a_l**3)
+        C = const.c.to(units.Mpc / units.Gyr).value / a_l
+        Ds = self._cosmo.comoving_distance(zs).value
+        Dl = self._cosmo.comoving_distance(self.zl).value
         Dls = Ds - Dl
         
-        # critical surface mass density Σ_c; 
-        # rightmost product scales to Mpc to pc, and then to a comoving surface area
-        Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls)) / (pc_per_Mpc * a_zl**2)
+        # critical surface mass density Σ_c in comoving (M_sun/h)/(pc/h)^2; 
+        # final quotient scales to Mpc to pc, and adds an h to get (M_sun/h)/(pc/h)^2
+        Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
+        Sigma_crit = Sigma_crit / (1e6 * self._cosmo.h)
 
         return Sigma_crit 

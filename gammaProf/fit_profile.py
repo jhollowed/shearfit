@@ -77,12 +77,15 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     # get the background data, and scale the tangential shear to ΔΣ 
     sources = data.get_background()
     Ec = data.calc_sigma_crit()
-    dSigma_data = sources['yt'] * Ec
-    r = sources['r']
+    dSigma_data_all = sources['yt'] * Ec
+    r_all = sources['r']
     if(bin_data == True):
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
-        [dSigma_data,_,_] = stats.binned_statistic(r, dSigma_data, statistic='mean', bins=bins)
-        [r,_,_] = stats.binned_statistic(r, r, statistic='mean', bins=bins)
+        [dSigma_data,_,_] = stats.binned_statistic(r_all, dSigma_data_all, statistic='mean', bins=bins)
+        [r,_,_] = stats.binned_statistic(r_all, r_all, statistic='mean', bins=bins)
+    else:
+        r = r_all
+        dSigma_data = dSigma_data_all
 
     # get parameter guesses from initial NFW form
     rad_init = profile.r200c
@@ -125,9 +128,19 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         for n in range(bootN):
             bootstrap_profile.r200c = rad_init
             bootstrap_profile.c = conc_init
-            boot_i = np.random.choice(np.arange(len(r)), int(len(r)*bootF), replace=replace)
+            
+            boot_i = np.random.choice(np.arange(len(r_all)), int(len(r_all)*bootF), replace=replace)
+            if(bin_data == True):
+                r_i = r_all[boot_i]
+                dSigma_data_i = dSigma_data_all[boot_i]
+                [dSigma_data_i,_,_] = stats.binned_statistic(r_i, dSigma_data_i, statistic='mean', bins=bins)
+                [r_i,_,_] = stats.binned_statistic(r_i, r_i, statistic='mean', bins=bins)
+            else:
+                r_i = r[boot_i]
+                dSigma_data_i = dSigma_data[boot_i]
+
             res_i = optimize.least_squares(_nfw_fit_residual, fit_params, 
-                                           args=(bootstrap_profile, r[boot_i], dSigma_data[boot_i], 
+                                           args=(bootstrap_profile, r_i, dSigma_data_i, 
                                            cM_relation), bounds = bounds)
             if(cM_relation is not None):
                 m200c = bootstrap_profile.radius_to_mass()
@@ -136,8 +149,8 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
             else:
                 params_bootstrap[n] = res_i.x
                 c_intr_scatter_bootstrap[n] = 0
-
-        # estaimte the parameter uncertainty as the spread of the bootstrap fit values, 
+        
+        # estimate the parameter uncertainty as the spread of the bootstrap fit values, 
         # adding the intrinsic c-M scatter to the concentration error (zero if c is free)
         param_err = np.std(params_bootstrap, axis=0) + \
                     [0, np.mean(c_intr_scatter_bootstrap)]

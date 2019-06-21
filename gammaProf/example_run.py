@@ -36,7 +36,7 @@ def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.
     zl : float
         The lens redshift. Defaults to 0.35.
     r200c : float
-        The :math:`r_{200c}` radius of the lens, in Mpc. Defaults to 4.25.
+        The :math:`r_{200c}` radius of the lens, in Mpc/h. Defaults to 4.25.
     c : float
         The dimensionless NFW concentration of the lens. Defaults to 4.0.
     nsouces : int
@@ -151,7 +151,6 @@ def _read_sim_data(halo_cutout_dir):
     c_err = props['sod_halo_cdelta_error']
     m200c = props['sod_halo_mass']
     true_profile = NFW(r200c, c, zl, c_err = c_err)
-    pdb.set_trace()
     
     raytrace_file = h5py.File(rtfs[0], 'r')
     nplanes = len(list(raytrace_file.keys()))
@@ -199,6 +198,9 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     sigmaCrit = lens.calc_sigma_crit()
     yt = bg['yt']
     r = bg['r']
+    
+    if(zl == 0.831494): pass
+    else: return 
 
     # do inner radius cut and bin data
     pprint('doing radial masking and binning')
@@ -212,17 +214,18 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     rsamp = np.linspace(min(r), max(r), 1000)
     dSigma_true = true_profile.delta_sigma(rsamp)
 
+    pdb.set_trace()
     # fit the concentration and radius
     pprint('fitting with floating concentration')
     fitted_profile = NFW(0.75, 3.0, zl)
-    fit(lens, fitted_profile, rad_bounds = [0.1, 4], conc_bounds = [1, 10], 
+    fit(lens, fitted_profile, rad_bounds = [0.1, 15], conc_bounds = [1, 10], 
         bootstrap=True, bin_data=bin_data, bins=rbins)
     [dSigma_fitted, dSigma_fitted_err] = fitted_profile.delta_sigma(rsamp, bootstrap=True,)
 
     # and now do it again, iteratively using a c-M relation instead of fitting for c
     pprint('fitting with inferred c-M concentration')
     fitted_cm_profile = NFW(0.75, 3.0, zl)
-    fit(lens, fitted_cm_profile, rad_bounds = [0.1, 4], cM_relation='child2018', 
+    fit(lens, fitted_cm_profile, rad_bounds = [0.1, 15], cM_relation='child2018', 
         bootstrap=True, bin_data=bin_data, bins=rbins)
     [dSigma_fitted_cm, dSigma_fitted_cm_err] = fitted_cm_profile.delta_sigma(rsamp, bootstrap=True)
     
@@ -235,7 +238,7 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     np.save('{}/c_cM_fit_{}bins_{}rmin.npy'.format(out_dir, rbins, rmin), fitted_cm_profile.c)
 
     # all done if not plotting
-    if(not makeplot): return
+    #RRR if(not makeplot): return
 
     # now do a grid scan
     pprint('doing grid scan')
@@ -253,10 +256,13 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     # plot sources vs truth and both fits
     f = plt.figure(figsize=(12,6))
     ax = f.add_subplot(121)
-    #ax.plot(r, yt*sigmaCrit, 'xk', 
-    #        label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$', alpha=0.33)
-    ax.plot(binned_r[0], binned_dsig[0], '-xk', 
-            label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$')
+    
+    if(not bin_data):
+        ax.plot(r, yt*sigmaCrit, 'xk', 
+                label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$', alpha=0.33)
+    else:
+        ax.plot(binned_r[0], binned_dsig[0], '-xk', 
+                label=r'$\gamma_{T,\mathrm{NFW}} \Sigma_c\>\>+\>\>\mathrm{Gaussian\>noise}$')
     ax.plot(rsamp, dSigma_true, '--', label=r'$\Delta\Sigma_\mathrm{{NFW}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
                                             .format(r200c, c), color=color[0], lw=2)
     ax.plot(rsamp, dSigma_fitted, label=r'$\Delta\Sigma_\mathrm{{fit}},\>\>r_{{200c}}={:.3f}; c={:.3f}$'\
@@ -273,10 +279,8 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
 
     # format
     ax.legend(fontsize=14, loc='upper right')
-    ax.set_xlabel(r'$r\>\>\lbrack\mathrm{Mpc}\rbrack$', fontsize=14)
+    ax.set_xlabel(r'$r\>\>\lbrack\mathrm{Mpc/h}\rbrack$', fontsize=14)
     ax.set_ylabel(r'$\Delta\Sigma\>\>\lbrack\mathrm{M}_\odot\mathrm{pc}^{-2}\rbrack$', fontsize=14)
-
-    pdb.set_trace()
 
 
     # plot fit cost in the radius-concentration plane
@@ -306,9 +310,10 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     ax2.legend(fontsize=14, loc='upper right')
     cbar = f.colorbar(chi2, ax=ax2)
     cbar.set_label(r'$\left[(\chi^2/\mathrm{min}(\chi^2))\right]^{-1}$', fontsize=14)
-    ax2.set_xlabel(r'$r_{200c}\>\>\left[\mathrm{Mpc}\right]$', fontsize=14)
+    ax2.set_xlabel(r'$r_{200c}\>\>\left[\mathrm{Mpc/h}\right]$', fontsize=14)
     ax2.set_ylabel(r'$c_{200c}$', fontsize=14)
 
     plt.tight_layout()
-    if(showfig): plt.show()
-    else: f.savefig('{}/{}_shearprof_fit_{}bins_{}rmin.png'.format(out_dir, zl, rbins, rmin), dpi=200)
+    plt.show()
+    #RRR if(showfig): plt.show()
+    #RRR else: f.savefig('{}/{}_shearprof_fit_{}bins_{}rmin.png'.format(out_dir, zl, rbins, rmin), dpi=200)
