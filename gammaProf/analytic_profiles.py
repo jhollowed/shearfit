@@ -7,10 +7,10 @@ from astropy.cosmology import WMAP7
 '''
 This module contains a collection of ananlytic halo profile forms (currently just NFW), which 
 return a prediction for the induced source tangential shear by the lens, as a function of halocentric 
-projected radius. Specifically, the scaled tang. shear ΔΣ = γ_t * Σ_c is returned, which is a constant
-for any identical lens, regardless of lens and source redshifts. Fitting the profile to data requires
-removing this scaling (or equivalently, scaling galaxy redshifts), which should be done through the 
-cluster class interface in cluster.py.
+projected radius. Specifically, the scaled tangential shear (critical surface density mutliplied through 
+the shearis returned, which is a constant for any identical lens, regardless of lens and source redshifts.
+Fitting the profile to data requires removing this scaling (or equivalently, scaling galaxy redshifts), 
+which should be done through the cluster class interface in `lensing_system.py`.
 
 To add a profile, simply compute the projected surface mass density by integrating the 3d density
 profile along the line of sight, and then compute the shear prediction by scaling delta_sigma by 
@@ -56,12 +56,16 @@ class NFW:
     """
 
     def __init__(self, r200c, c, zl, r200c_err=0, c_err=0, cosmo=WMAP7): 
-        self._r200c = r200c
-        self._c = c
+        
         self.zl = zl
-        self.c_err = c_err
-        self.r200c_err = r200c_err
         self._cosmo = cosmo
+        
+        self._c = c
+        self.c_err = c_err
+        self._del_c = (200/3) * self._c**3 / (np.log(1+self._c) - self.c/(1+self._c))
+        
+        self._r200c = r200c
+        self.r200c_err = r200c_err
         self._rs = r200c / c
         self._x = None
 
@@ -74,12 +78,19 @@ class NFW:
         self._rs = self.r200c / self.c
     
     @property
+    def rs(self): return self._rs
+    
+    @property
     def c(self): return self._c
     @c.setter
     def c(self, value): 
         assert(isinstance(value, float))
         self._c = value
         self._rs = self.r200c / self.c
+    
+    @property
+    def del_c(self): return self._del_c
+    
 
 
     def radius_to_mass(self):
@@ -237,7 +248,6 @@ class NFW:
 
         # define del_c NFW param, 
         # critical density rho_crit in proper M_sun pc^-3,
-        del_c = (200/3) * self._c**3 / (np.log(1+self._c) - self.c/(1+self._c))
         rho_crit = self._cosmo.critical_density(self.zl)
         
         # 1/h^2 in rho_crit to get units to match radius
@@ -247,7 +257,7 @@ class NFW:
         
         # proper mean surface density DSigma in Mpc/h
         # factor of 1/a^2 to get comoving
-        dSigma = (rs * del_c * rho_crit) * self._g(x)
+        dSigma = (rs * self._del_c * rho_crit) * self._g(x)
         dSigma = dSigma / a**2
 
         return dSigma

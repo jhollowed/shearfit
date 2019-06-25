@@ -257,8 +257,9 @@ class obs_lens_system:
             :math:(`M_{\\odot}/h)/(\\text{pc}/h)^2` 
         '''
         
-        self._check_sources()
-        if(zs is None): zs = self._zs
+        if(zs is None): 
+            self._check_sources()
+            zs = self._zs
         
         # scale factors
         a = 1/(1+self.zl)
