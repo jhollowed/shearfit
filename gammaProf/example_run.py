@@ -18,8 +18,7 @@ from fit_profile import fit_nfw_profile_gridscan as fit_gs
 
 pprint = lambda s: print(s, flush=True)
 
-
-def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.5):
+def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=0.5):
     """
     This function performs an example run of the package, fitting an NFW profile to synthetically 
     generated background source data. The process is as follows:
@@ -55,7 +54,7 @@ def mock_example_run(zl=0.35, r200c=4.25, c=4.0, nsources=75, fov=1500, z_dls=0.
 
 def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outerRim/cutouts_raytracing/'\
                                      'halo_4781763152100605952_0', 
-                    makeplot = True, showfig=True, stdout=True, bin_data=False, rbins=25, rmin=0):
+                    makeplot = True, showfig=True, stdout=True, bin_data=True, rbins=25, rmin=0):
     """
     This function performs an example run of the package, fitting an NFW profile to background 
     source data as obtained from ray-tracing through Outer Rim lightcone halo cutouts. The process 
@@ -200,7 +199,7 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     r = bg['r']
     
     if(zl == 0.831494): pass
-    else: return 
+    else: return
 
     # do inner radius cut and bin data
     pprint('doing radial masking and binning')
@@ -214,20 +213,24 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     rsamp = np.linspace(min(r), max(r), 1000)
     dSigma_true = true_profile.delta_sigma(rsamp)
 
-    pdb.set_trace()
     # fit the concentration and radius
     pprint('fitting with floating concentration')
+    pdb.set_trace()
     fitted_profile = NFW(0.75, 3.0, zl)
     fit(lens, fitted_profile, rad_bounds = [0.1, 15], conc_bounds = [1, 10], 
         bootstrap=True, bin_data=bin_data, bins=rbins)
-    [dSigma_fitted, dSigma_fitted_err] = fitted_profile.delta_sigma(rsamp, bootstrap=True,)
+    #[dSigma_fitted, dSigma_fitted_err] = fitted_profile.delta_sigma(rsamp, bootstrap=True)
+    dSigma_fitted = fitted_profile.delta_sigma(rsamp, bootstrap=False)
+    dSigma_fitted_err = np.zeros(len(dSigma_fitted))
 
     # and now do it again, iteratively using a c-M relation instead of fitting for c
     pprint('fitting with inferred c-M concentration')
     fitted_cm_profile = NFW(0.75, 3.0, zl)
     fit(lens, fitted_cm_profile, rad_bounds = [0.1, 15], cM_relation='child2018', 
         bootstrap=True, bin_data=bin_data, bins=rbins)
-    [dSigma_fitted_cm, dSigma_fitted_cm_err] = fitted_cm_profile.delta_sigma(rsamp, bootstrap=True)
+    #[dSigma_fitted_cm, dSigma_fitted_cm_err] = fitted_cm_profile.delta_sigma(rsamp, bootstrap=True)
+    dSigma_fitted_cm = fitted_profile.delta_sigma(rsamp, bootstrap=False)
+    dSigma_fitted_cm_err = np.zeros(len(dSigma_fitted_cm))
     
     # write out fitting result
     pprint('r200c_fit = {}; c_fit = {}'.format(fitted_profile.r200c, fitted_profile.c))
@@ -317,3 +320,6 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     plt.show()
     #RRR if(showfig): plt.show()
     #RRR else: f.savefig('{}/{}_shearprof_fit_{}bins_{}rmin.png'.format(out_dir, zl, rbins, rmin), dpi=200)
+
+if(__name__ == "__main__"): 
+    mock_example_run()

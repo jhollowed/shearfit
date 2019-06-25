@@ -154,10 +154,13 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         # adding the intrinsic c-M scatter to the concentration error (zero if c is free)
         param_err = np.std(params_bootstrap, axis=0) + \
                     [0, np.mean(c_intr_scatter_bootstrap)]
-    
+
         # update profile object with errors
         profile.r200c_err = param_err[0]
         profile.c_err = param_err[1]
+    
+    else:
+        param_err = [0,0]
 
     return [res, param_err]
 

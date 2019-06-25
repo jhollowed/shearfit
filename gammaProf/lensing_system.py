@@ -261,22 +261,22 @@ class obs_lens_system:
         if(zs is None): zs = self._zs
         
         # scale factors
-        a_l = 1/(1+self.zl)
-        a_s = 1/(1+zs)
+        a = 1/(1+self.zl)
 
-        # G in comoving Mpc^3 M_sun^-1 Gyr^-2,
-        # speed of light C in comoving Mpc Gyr^-1
-        # distance to lens Dl and source Ds in comoving Mpc
+        # G in Mpc^3 M_sun^-1 Gyr^-2,
+        # speed of light C in Mpc Gyr^-1
+        # distance to lens Dl and source Ds in proper Mpc
         # --> warning: this assumes a flat cosmology; or that angular diamter distance = proper distance
-        G = const.G.to(units.Mpc**3 / (units.M_sun * units.Gyr**2)).value / (a_l**3)
-        C = const.c.to(units.Mpc / units.Gyr).value / a_l
-        Ds = self._cosmo.comoving_distance(zs).value
-        Dl = self._cosmo.comoving_distance(self.zl).value
+        G = const.G.to(units.Mpc**3 / (units.M_sun * units.Gyr**2)).value
+        C = const.c.to(units.Mpc / units.Gyr).value
+        Ds = self._cosmo.angular_diameter_distance(zs).value
+        Dl = self._cosmo.angular_diameter_distance(self.zl).value
         Dls = Ds - Dl
         
-        # critical surface mass density Σ_c in comoving (M_sun/h)/(pc/h)^2; 
-        # final quotient scales to Mpc to pc, and adds an h to get (M_sun/h)/(pc/h)^2
+        # critical surface mass density Σ_c in proper (M_sun/h)/(pc/h)^2; 
+        # final quotient scales to Mpc to pc, adds an h to get (M_sun/h)/(pc/h)^2, 
+        # and an a^2 to get to a comoving surface area
         Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
-        Sigma_crit = Sigma_crit / (1e6 * self._cosmo.h)
+        Sigma_crit = Sigma_crit / (1e12 * self._cosmo.h * a**2)
 
         return Sigma_crit 

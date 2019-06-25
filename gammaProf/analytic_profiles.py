@@ -163,7 +163,7 @@ class NFW:
         
         Returns
         -------
-        float arry or list of float arrays
+        float array or list of float arrays
             The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`, 
             for each value of `r`. If `bootstrap` is `True`, then pack this array into a two-element 
             list, which is followed by the estaimted :math:`1\\sigma` error at each of those locations.
@@ -173,8 +173,6 @@ class NFW:
             return self._delta_sigma(r)
         
         else:
-            if(not (self.r200c_err != 0 and self.c_err != 0)):
-                pdb.set_trace()
             assert self.r200c_err != 0 and self.c_err != 0, "bootstrap option should be "\
                    "disabled if radius or concentration errors are zero"
             
@@ -243,15 +241,13 @@ class NFW:
         rho_crit = self._cosmo.critical_density(self.zl)
         
         # 1/h^2 in rho_crit to get units to match radius
-        # 1/a^3 in rho_crit to get comoving volume
-        # 1/1e6 in rs to get radius in pc
+        # 1e6 in rs to get Mpc to pc
         rho_crit = rho_crit.to(units.Msun/units.pc**3).value / self._cosmo.h**2
-        rho_crit = rho_crit / a**3
-        rs = self._rs / 1e6
-
-        pdb.set_trace()
+        rs = self._rs * 1e6
         
-        # comoving mean surface density DSigma
-        dSigma = (rs * del_c * rho_crit) * self._g(x) 
+        # proper mean surface density DSigma in Mpc/h
+        # factor of 1/a^2 to get comoving
+        dSigma = (rs * del_c * rho_crit) * self._g(x)
+        dSigma = dSigma / a**2
 
         return dSigma

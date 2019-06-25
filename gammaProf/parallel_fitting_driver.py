@@ -94,7 +94,7 @@ def parallel_profile_fit(lensing_dir):
 
         if( (len(glob.glob('{}/profile_fits/*0.3rmin.npy'.format(cutout))) < 4 or overwrite) and not dry_run):
             fitter.sim_example_run(halo_cutout_dir = cutout, makeplot=makeplot, showfig=False, 
-                                   stdout=(rank==0), bin_data=True, rbins=30, rmin=0.3)
+                                   stdout=(rank==0), bin_data=False, rbins=30, rmin=0.3)
     
     # -------------------------------------------------------------------------------
     # -------------------------------------------------------------------------------
