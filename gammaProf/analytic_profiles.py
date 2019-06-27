@@ -224,8 +224,9 @@ class NFW:
 
     def _delta_sigma(self, r):
         """
-        Computes :math:`\\Delta\\Sigma` at projected comoving radii `r`, for an NFW lens. 
-        This function does not perform the final scaling by :math:`\\Sigma_{\\text{critical}}`, 
+        Computes :math:`\\Delta\\Sigma` at projected comoving radii `r`, for an NFW lens. The implementation
+        is Eq.(14) given in Wright & Brainerd 1999, with the critical density factor removed. Hence, 
+        this function does not perform the final scaling by :math:`\\Sigma_{\\text{critical}}`, 
         which would result in the tangential shear :math:`\\gamma_T = \\Delta\\Sigma/\\Sigma_\\text{c}`; 
         :math:`\\Delta\\Sigma`, rather, is the same for an identical lens, regradless of the lens or 
         soure redshifts. Use the methods provided in `gammaProf.cluster.lens` to perform the scaling and 
@@ -243,21 +244,67 @@ class NFW:
             The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`
         """
 
+        # 1e6 in rs to get Mpc to pc
+        rs = self._rs * 1e6
         x = r / self._rs
         a = 1/(1+self.zl)
 
-        # define del_c NFW param, 
-        # critical density rho_crit in proper M_sun pc^-3,
-        rho_crit = self._cosmo.critical_density(self.zl)
-        
+        # define critical density rho_crit in proper M_sun pc^-3,
         # 1/h^2 in rho_crit to get units to match radius
-        # 1e6 in rs to get Mpc to pc
+        rho_crit = self._cosmo.critical_density(self.zl)
         rho_crit = rho_crit.to(units.Msun/units.pc**3).value / self._cosmo.h**2
-        rs = self._rs * 1e6
         
         # proper mean surface density DSigma in Mpc/h
-        # factor of 1/a^2 to get comoving
+        # factor of 1/a^2 to get comoving surface area
         dSigma = (rs * self._del_c * rho_crit) * self._g(x)
         dSigma = dSigma / a**2
 
         return dSigma
+
+
+    def sigma(self, r):
+        """
+        Computes :math:`\\Sigma` at projected comoving radii `r`, for an NFW lens. The implementation
+        is Eq.(11) given in Wright & Brainerd 1999. 
+        
+        Parameters
+        ----------
+        r : float array
+            Comoving projected radius relative to the center of the lens; 
+            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc/h`.
+        
+        Returns
+        -------
+        dSigma : float array
+            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`
+        """
+ 
+        # 1e6 in rs to get Mpc to pc
+        rs = self._rs * 1e6
+        x = r / self._rs
+        a = 1/(1+self.zl)
+
+        # define critical density rho_crit in proper M_sun pc^-3,
+        # 1/h^2 in rho_crit to get units to match radius
+        rho_crit = self._cosmo.critical_density(self.zl)
+        rho_crit = rho_crit.to(units.Msun/units.pc**3).value / self._cosmo.h**2
+         
+        # NFW prediction for surface density
+        f1 = lambda x: (2/(x**2-1)) * (1 - ( 2/np.sqrt(1-x**2) * np.arctanh(np.sqrt((1-x)/(1+x))) ))
+        f2 = lambda x: (2/(x**2-1)) * (1 - ( 2/np.sqrt(x**2-1) * np.arctan(np.sqrt((x-1)/(1+x))) ))
+        
+        # construct masks for piecewise function
+        m1 = np.where(x < 1)
+        m2 = np.where(x == 1)
+        m3 = np.where(x > 1)
+        
+        sigma = np.empty(len(x),dtype=np.float64)
+        sigma[m1] = f1( x[m1] )
+        sigma[m2] = 2./3.
+        sigma[m3] = f2( x[m3] )
+
+        # add cosmology dependence prefactor, and 1/a^2 to get comoving surface area
+        prefactor = rs * self._del_c * rho_crit
+        sigma_nfw = prefactor * sigma / a**2
+        
+        return sigma_nfw

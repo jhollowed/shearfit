@@ -43,6 +43,8 @@ class obs_lens_system:
         The imaginary component of the source shears.
     yt : float array
         The source tangential shears.
+    k : float array
+        The source convergences.
 
     Methods
     -------
@@ -59,6 +61,9 @@ class obs_lens_system:
         self._cosmo = cosmo
         self._has_sources = False
         self._has_shear12 = False
+        self._has_shear1 = False
+        self._has_shear2 = False
+        self._has_kappa = False
         self._theta1 = None
         self._theta2 = None
         self._zs = None
@@ -67,6 +72,7 @@ class obs_lens_system:
         self._y1 = None
         self._y2 = None
         self._yt = None
+        self._k =None
 
 
     def _check_sources(self):
@@ -77,7 +83,7 @@ class obs_lens_system:
         assert(self._has_sources), 'sources undefined; first run set_background()'
         
 
-    def set_background(self, theta1, theta2, zs, y1=None, y2=None, yt=None):
+    def set_background(self, theta1, theta2, zs, y1=None, y2=None, yt=None, k=None):
         '''
         Defines and assigns background souce data vectors to attributes of the lens object, 
         including the angular positions, redshifts, projected comoving distances from 
@@ -94,11 +100,14 @@ class obs_lens_system:
         zs : float array
             The source redshifts.
         y1 : float array, optional
-            The shear component :math:`\\gamma_1`.
+            The shear component :math:`\\gamma_1`. Must be passed along with `y2`, unless passing `yt`.
         y2 : float array, optional
-            The shear component :math:`\\gamma_2`.
+            The shear component :math:`\\gamma_2`. Must be passed along with `y1`, unless passing `yt`.
         yt : float array, optional
-            The tangential shear :math:`\\gamma_T`.
+            The tangential shear :math:`\\gamma_T`. Must be passed if not passing `y1` and `y2`.
+        k : float array, optional
+            The convergence :math:`\\kappa`. Not needed for any computations of this class, but is
+            offered as a convenience. Defaults to `None`.
         '''
 
         # make sure shear was passed correctly -- either tangenetial, or components, not both
@@ -115,9 +124,11 @@ class obs_lens_system:
         self._y1 = np.array(y1)
         self._y2 = np.array(y2)
         self._yt = np.array(yt)
+        self._k = np.array(k)
         
         # set flags and compute additonal quantities
         if(yt is None): self._has_shear12 = True
+        if(k is not None): self._has_kappa = True
         self._has_sources = True
         self._comp_bg_quantities()
 
@@ -164,21 +175,22 @@ class obs_lens_system:
         '''
         self._check_sources()
         
+        bg_arrays = [(180/np.pi * self._theta1 * 3600),
+                     (180/np.pi * self._theta2 * 3600),
+                     self._r, self._zs, self._yt]
+        bg_dtypes = [('theta1',float), ('theta2',float), ('r',float),
+                     ('zs',float), ('yt',float)]
+        
         if(self._has_shear12):
-            bg = np.rec.fromarrays([(180/np.pi * self._theta1 * 3600), 
-                                    (180/np.pi * self._theta2 * 3600), 
-                                    self._r, self._zs, self._y1, 
-                                    self._y2, self._yt], 
-                                    dtype = [('theta1',float), ('theta2',float), ('r',float), 
-                                             ('zs',float), ('y1',float), ('y2',float), 
-                                             ('yt',float)])
-        else:
-            bg = np.rec.fromarrays([(180/np.pi * self._theta1 * 3600), 
-                                    (180/np.pi * self._theta2 * 3600), 
-                                    self._r, self._zs, self._yt], 
-                                    dtype = [('theta1',float), ('theta2',float), 
-                                             ('r',float), ('zs',float), 
-                                             ('yt',float)])
+            bg_arrays.append(self._y1)
+            bg_arrays.append(self._y2)
+            bg_dtypes.append(('y1', float))
+            bg_dtypes.append(('y2', float))
+        if(self._has_kappa):
+            bg_arrays.append(self._k)
+            bg_dtypes.append(('k', float))
+       
+        bg = np.rec.fromarrays(bg_arrays, dtype = bg_dtypes) 
         return bg
     
 
@@ -188,6 +200,11 @@ class obs_lens_system:
     def cosmo(self, value): 
         self._cosmo = value
         self._comp_bg_quantities()
+
+    @property
+    def r(self): return self._r
+    def r(self, value):
+        raise Exception('Cannot change source \'r\' value; update source redshifts instead')
 
     @property
     def theta1(self): return self._theta1
@@ -209,29 +226,44 @@ class obs_lens_system:
     def zs(self, value): 
         self._zs = value
         self._comp_bg_quantities()
+
+    @property
+    def k(self): return self._k
+    @k.setter
+    def k(self, value):
+        self._k = value
+        if(value is None): self._has_kappa = False
+        else: self._has_kappa = True
     
     @property
     def y1(self): return self._y1
     @y1.setter
-    def y1(self, value): 
-        self._y1 = value
-        self._comp_bg_quantities()
+    def y1(self, value):
+        if(not self._has_shear12):
+            raise Exception('object initialized with yt rather than y1,y2; cannot call y1 setter')
+        else:
+            self._y1 = value
+            self._comp_bg_quantities()
     
     @property
     def y2(self): return self._y2
     @y2.setter
     def y2(self, value): 
-        self._y2 = value
-        self._comp_bg_quantities()
+        if(not self._has_shear12):
+            raise Exception('object initialized with yt rather than y1,y2; cannot call y2 setter')
+        else:
+            self._y2 = value
+            self._comp_bg_quantities()
     
     @property
     def yt(self): return self._yt
     @yt.setter
     def yt(self, value): 
         self._yt = value
-        if(self._has_shear12):
+        if(self._has_shear12 or self._has_shear1 or self._has_shear2):
             warnings.warn('Warning: setting class attribute yt, but object was initialized' 
-                          'with y1,y2; shear components y1 and y2 being set to None')
+                          'with y1,y2 (or y1/y2 setters were called); shear components y1'
+                          'and y2 being set to None')
             self._has_shear12 = False
             self._y1= None
             self._y2 = None
@@ -280,4 +312,4 @@ class obs_lens_system:
         Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
         Sigma_crit = Sigma_crit / (1e12 * self._cosmo.h * a**2)
 
-        return Sigma_crit 
+        return Sigma_crit

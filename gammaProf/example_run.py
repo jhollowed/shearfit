@@ -18,7 +18,7 @@ from fit_profile import fit_nfw_profile_gridscan as fit_gs
 
 pprint = lambda s: print(s, flush=True)
 
-def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=0.5):
+def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=1.0, noisef=0.1):
     """
     This function performs an example run of the package, fitting an NFW profile to synthetically 
     generated background source data. The process is as follows:
@@ -33,22 +33,27 @@ def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=0.5
     Parameters
     ----------
     zl : float
-        The lens redshift. Defaults to 0.35.
+        The lens redshift. Defaults to `0.35`.
     r200c : float
-        The :math:`r_{200c}` radius of the lens, in Mpc/h. Defaults to 4.25.
+        The :math:`r_{200c}` radius of the lens, in Mpc/h. Defaults to `4.25`.
     c : float
-        The dimensionless NFW concentration of the lens. Defaults to 4.0.
+        The dimensionless NFW concentration of the lens. Defaults to `4.0`.
     nsouces : int
-        The number of sources to pace in the background. Defaults to 75.
+        The number of sources to pace in the background. Defaults to `75`.
     fov : float 
-        The side length of the field of view, in arcsecons. Defaults to 1500.
+        The side length of the field of view, in arcseconds. Defaults to `1500`.
     z_dls : float
         The maximum redshift difference between the lens and sources. Source 
         redshifts will be randomly drawn from a uniform distribution on [`zl`, `zl+z_dls`].
-        Defaults to 0.5.
+        Defaults to `1.0`.
+    noisef : float
+        The amount of scatter to add to the mock data. Specifically, the clean analytic 
+        signal for one data point will be modified by 
+        `data = clean_signal + (clean_signal * (np.sqrt(noisef) * np.random.randn(1)))`.
+        Defaults to `0.1`.
     """
 
-    [mock_lens, true_profile] = _gen_mock_data(zl, r200c, c, nsources, fov, z_dls)
+    [mock_lens, true_profile] = _gen_mock_data(zl, r200c, c, nsources, fov, z_dls, noisef=noisef)
     _fit_test_data(mock_lens, true_profile, showfig=True)
 
 
@@ -86,7 +91,7 @@ def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outer
         print statements will be suppressed. Defaults to `True`.
     bin_data : bool
         whether or not to fit to shears averaged in radial bins, rather than to each individual source.
-        Defaults to True.
+        Defaults to `True`.
     rbins : int
         Number of bins distribute over the radial range of the data, if `bin_data == True`.
     rmin : float
@@ -107,7 +112,7 @@ def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outer
                    rbins=rbins, rmin=rmin)
 
 
-def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
+def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls, noisef=0.1):
 
     # randomly place sources (x and y in arcsec)
     print('generating data')
@@ -117,7 +122,7 @@ def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
 
     # place lens (set shears to 0 for now)
     mock_lens = obs_lens_system(zl)
-    mock_lens.set_background(x, y, zs, yt = np.zeros(len(x)))
+    mock_lens.set_background(x, y, zs, yt = np.zeros(len(x)), k = np.zeros(len(x)))
 
     # assign all the sources with NFW-implied tangential shears, and add scatter (10% for 1std of pop)
     sigmaCrit = mock_lens.calc_sigma_crit()
@@ -126,10 +131,17 @@ def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls):
     
     true_profile = NFW(r200c, c, zl)
     dSigma_clean = true_profile.delta_sigma(r)
-    yt_clean = dSigma_clean/sigmaCrit
-    noise = (np.sqrt(0.1) * np.random.randn(len(r)))
+    sigma_clean = true_profile.sigma(r)
+
+    yt_clean = dSigma_clean / sigmaCrit
+    noise = (np.sqrt(noisef) * np.random.randn(len(r)))
     yt_data = yt_clean + (yt_clean*noise)
     mock_lens.yt = yt_data
+
+    k_clean = sigma_clean / sigmaCrit
+    noise = (np.sqrt(noisef) * np.random.randn(len(r)))
+    k_data = k_clean + (k_clean * noise)
+    mock_lens.k = k_data
 
     return [mock_lens, true_profile]
     
@@ -153,7 +165,7 @@ def _read_sim_data(halo_cutout_dir):
     
     raytrace_file = h5py.File(rtfs[0], 'r')
     nplanes = len(list(raytrace_file.keys()))
-    t1, t2, y1, y2, zs = [], [], [], [], []
+    t1, t2, y1, y2, k, zs = [], [], [], [], [], []
 
     # stack data from each source plane
     for i in range(nplanes):
@@ -168,8 +180,9 @@ def _read_sim_data(halo_cutout_dir):
         t2 = np.hstack([t2, plane['xr2'][:]]) 
         y1 = np.hstack([y1, plane['sr1'][:]])
         y2 = np.hstack([y2, plane['sr2'][:]])
+        k = np.hstack([k, plane['kr0'][:]])
         zs = np.hstack([zs, np.ones(len(t1)-len(zs)) * plane_z])
-    
+     
     # trim the fov borders by 10% to be safe
     mask = np.logical_and(np.abs(t1)<props['boxRadius_arcsec']*0.9, 
                           np.abs(t2)<props['boxRadius_arcsec']*0.9)
@@ -178,9 +191,10 @@ def _read_sim_data(halo_cutout_dir):
     zs = zs[mask]
     y1 = y1[mask]
     y2 = y2[mask]
-
+    k = k[mask]
+    
     sim_lens = obs_lens_system(zl)
-    sim_lens.set_background(t1, t2, zs, y1=y1, y2=y2)
+    sim_lens.set_background(t1, t2, zs, y1=y1, y2=y2, k=k)
 
     raytrace_file.close()
     
@@ -197,21 +211,31 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     sigmaCrit = lens.calc_sigma_crit()
     yt = bg['yt']
     r = bg['r']
+    k = bg['k']
+    zs = bg['zs']
     
-    if(zl == 0.831494): pass
-    else: return
+    #if(zl == 0.831494): pass
+    #else: return
 
     # do inner radius cut and bin data
     pprint('doing radial masking and binning')
     radial_mask = (r >= rmin)
-    yt = yt[radial_mask]
     sigmaCrit = sigmaCrit[radial_mask]
+    yt = yt[radial_mask]
     r = r[radial_mask]
+    k = k[radial_mask]
+    zs = zs[radial_mask]
     binned_dsig = stats.binned_statistic(r, yt*sigmaCrit, statistic='mean', bins=rbins)
     binned_r = stats.binned_statistic(r, r, statistic='mean', bins=rbins)
 
     rsamp = np.linspace(min(r), max(r), 1000)
     dSigma_true = true_profile.delta_sigma(rsamp)
+
+    e = true_profile.sigma(r)
+    kk = k * sigmaCrit
+    binned_kk = stats.binned_statistic(r, kk, statistic='mean', bins=rbins)
+    pdb.set_trace()
+    
 
     # fit the concentration and radius
     pprint('fitting with floating concentration')
