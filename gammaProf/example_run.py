@@ -150,6 +150,9 @@ def _read_sim_data(halo_cutout_dir):
 
     # get ray-trace hdf5 and properties csv
     rtfs = glob.glob('{}/*lensing_mocks.hdf5'.format(halo_cutout_dir))
+    
+    #YYY rtfs = glob.glob('{}/*gmaps.hdf5'.format(halo_cutout_dir))
+    
     pfs = glob.glob('{}/properties.csv'.format(halo_cutout_dir))
     assert len(pfs) == 1, "Exactly one properties file is expected in {}".format(halo_cutout_dir)
 
@@ -174,14 +177,26 @@ def _read_sim_data(halo_cutout_dir):
         plane_z = plane['zs'][:]
 
         #ignore this plane if infront of the halo
+        #YYY if(i > 0): continue
         if(plane_z < zl): continue
        
         t1 = np.hstack([t1, plane['xr1'][:]])
-        t2 = np.hstack([t2, plane['xr2'][:]]) 
+        t2 = np.hstack([t2, plane['xr2'][:]])
         y1 = np.hstack([y1, plane['sr1'][:]])
         y2 = np.hstack([y2, plane['sr2'][:]])
         k = np.hstack([k, plane['kr0'][:]])
         zs = np.hstack([zs, np.ones(len(t1)-len(zs)) * plane_z])
+        
+        #YYY y1 = np.hstack([y1, np.ravel(plane['shear1'][:])])
+        #YYY y2 = np.hstack([y2, np.ravel(plane['shear2'][:])])
+        #YYY k = np.hstack([k, np.ravel(plane['kappa0'][:])])
+        #YYY T1 = np.linspace(-props['boxRadius_arcsec'], props['boxRadius_arcsec'], 1024)
+        #YYY T2 = np.linspace(-props['boxRadius_arcsec'], props['boxRadius_arcsec'], 1024)
+        #YYY grid = np.meshgrid(T1, T2)
+        #YYY t1 = np.ravel(grid[0])
+        #YYY t2 = np.ravel(grid[1])
+        #YYY zs = np.hstack([zs, np.ones(len(t1)-len(zs)) * 10])
+
      
     # trim the fov borders by 10% to be safe
     mask = np.logical_and(np.abs(t1)<props['boxRadius_arcsec']*0.9, 

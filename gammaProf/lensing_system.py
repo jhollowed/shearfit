@@ -143,7 +143,6 @@ class obs_lens_system:
         self._check_sources()
         
         # compute halo-centric projected radial separation of each source, in comoving Mpc/h
-        # sort all other data columns by this quantity
         self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
                                   self._cosmo.comoving_distance(self.zl).value * self._cosmo.h 
         if(self._has_shear12):
