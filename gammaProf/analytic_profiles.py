@@ -255,9 +255,9 @@ class NFW:
         rho_crit = rho_crit.to(units.Msun/units.pc**3).value / self._cosmo.h**2
         
         # proper mean surface density DSigma in Mpc/h
-        # factor of 1/a^2 to get comoving surface area
+        # factor of a^2 to get comoving surface area
         dSigma = (rs * self._del_c * rho_crit) * self._g(x)
-        dSigma = dSigma / a**2
+        dSigma = dSigma * a**2
 
         return dSigma
 
@@ -303,8 +303,8 @@ class NFW:
         sigma[m2] = 2./3.
         sigma[m3] = f2( x[m3] )
 
-        # add cosmology dependence prefactor, and 1/a^2 to get comoving surface area
+        # add cosmology dependence prefactor, and a^2 to get comoving surface area
         prefactor = rs * self._del_c * rho_crit
-        sigma_nfw = prefactor * sigma / a**2
+        sigma_nfw = prefactor * sigma * a**2
         
         return sigma_nfw
