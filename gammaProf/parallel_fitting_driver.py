@@ -29,8 +29,6 @@ def parallel_profile_fit(lensing_dir):
     # ---------- find all cutouts ----------
     #all_cutouts = np.array(glob.glob('{}/halo*'.format(lensing_dir)))
     all_cutouts = np.array(glob.glob('{}/halo_244960324069_0'.format(lensing_dir)))
-    all_cutouts = np.hstack([all_cutouts, 
-                            np.array(glob.glob('{}/halo_404385825240_0'.format(lensing_dir)))])
 
 
     # ----------------------------------------------------------------------

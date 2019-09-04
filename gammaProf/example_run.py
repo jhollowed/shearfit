@@ -247,8 +247,10 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     dSigma_true = true_profile.delta_sigma(rsamp)
 
     e = true_profile.sigma(r)
+    se = true_profile.delta_sigma(r)
     kk = k * sigmaCrit
     binned_kk = stats.binned_statistic(r, kk, statistic='mean', bins=rbins)
+    binned_yt = stats.binned_statistic(r, yt, statistic='mean', bins=rbins)
     pdb.set_trace()
     
 
