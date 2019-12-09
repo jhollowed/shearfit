@@ -18,7 +18,7 @@ from fit_profile import fit_nfw_profile_gridscan as fit_gs
 
 pprint = lambda s: print(s, flush=True)
 
-def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=1.0, noisef=0.1):
+def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=1.0, noisef=0.1, bin_data=False):
     """
     This function performs an example run of the package, fitting an NFW profile to synthetically 
     generated background source data. The process is as follows:
@@ -51,10 +51,13 @@ def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=1.0
         signal for one data point will be modified by 
         `data = clean_signal + (clean_signal * (np.sqrt(noisef) * np.random.randn(1)))`.
         Defaults to `0.1`.
+    bin_data : bool
+        whether or not to fit to shears averaged in radial bins, rather than to each individual source.
+        Defaults to `False`.
     """
 
     [mock_lens, true_profile] = _gen_mock_data(zl, r200c, c, nsources, fov, z_dls, noisef=noisef)
-    _fit_test_data(mock_lens, true_profile, showfig=True)
+    _fit_test_data(mock_lens, true_profile, showfig=True, bin_data=bin_data)
 
 
 def sim_example_run(halo_cutout_dir='/projects/DarkUniverse_esp/jphollowed/outerRim/cutouts_raytracing/'\
@@ -250,13 +253,10 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     se = true_profile.delta_sigma(r)
     kk = k * sigmaCrit
     binned_kk = stats.binned_statistic(r, kk, statistic='mean', bins=rbins)
-    binned_yt = stats.binned_statistic(r, yt, statistic='mean', bins=rbins)
-    pdb.set_trace()
-    
+    binned_yt = stats.binned_statistic(r, yt, statistic='mean', bins=rbins) 
 
     # fit the concentration and radius
     pprint('fitting with floating concentration')
-    pdb.set_trace()
     fitted_profile = NFW(0.75, 3.0, zl)
     fit(lens, fitted_profile, rad_bounds = [0.1, 15], conc_bounds = [1, 10], 
         bootstrap=True, bin_data=bin_data, bins=rbins)

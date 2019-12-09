@@ -9,8 +9,8 @@ from mass_concentration import child2018
 from lensing_system import obs_lens_system
 
 def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_relation=None, 
-                         bin_data = False, bins=None, 
-                         bootstrap=False, bootN = 1000, bootF = 1.0, replace=True):
+                         bin_data = False, bins=None, bootstrap=False, bootN = 1000, bootF = 1.0, 
+                         replace=True):
     """
     Fits an NFW-predicted :math:`\\Delta\\Sigma(r)` profile to a background shear dataset. To use
     this function, the user should first instantiate a `obs_lens_system` object, which will hold the
@@ -74,7 +74,7 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         the best fit parameters, and their errors.
     """
     
-    # get the background data, and scale the tangential shear to ΔΣ 
+    # get the background data, and scale the tangential shear to ΔΣ
     sources = data.get_background()
     Ec = data.calc_sigma_crit()
     dSigma_data_all = sources['yt'] * Ec
@@ -276,9 +276,10 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
         [dSigma_data,_,_] = stats.binned_statistic(r, dSigma_data, statistic='mean', bins=bins)
         [r,_,_] = stats.binned_statistic(r, r, statistic='mean', bins=bins)
-   
+ 
     cost = np.zeros((n, n))
 
+    plt.plot(r, dSigma_data, 'x')
     for i in range(n):
         for j in range(n):
             grid_params = [rsamp[j], csamp[i]]

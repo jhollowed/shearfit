@@ -75,7 +75,7 @@ class NFW:
     def r200c(self, value):
         assert(isinstance(value, float))
         self._r200c = value
-        self._rs = self.r200c / self.c
+        self.update_params()
     
     @property
     def rs(self): return self._rs
@@ -86,12 +86,20 @@ class NFW:
     def c(self, value): 
         assert(isinstance(value, float))
         self._c = value
-        self._rs = self.r200c / self.c
-    
+        self.update_params()
+
     @property
     def del_c(self): return self._del_c
-    
 
+
+    def update_params(self):
+        """
+        Recompute parameters that are sensitive to changes in r200c or c, in the event that they are
+        modified externally.
+        """
+        self._rs = self.r200c / self.c
+        self._del_c = (200/3) * self._c**3 / (np.log(1+self._c) - self.c/(1+self._c))
+ 
 
     def radius_to_mass(self):
         """

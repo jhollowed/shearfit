@@ -148,8 +148,9 @@ class obs_lens_system:
         if(self._has_shear12):
             # compute tangential shear yt
             self._phi = np.arctan(self._theta2/self._theta1)
-            self._yt = -(self._y1 * np.cos(2*self._phi) + 
-                        self._y2*np.sin(2*self._phi))
+            #self._yt = -(self._y1 * np.cos(2*self._phi) + 
+            #            self._y2*np.sin(2*self._phi))
+            self._yt = np.sqrt(self._y1**2 + self._y2**2)
     
     
     def get_background(self):
