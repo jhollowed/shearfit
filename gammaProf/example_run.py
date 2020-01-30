@@ -48,8 +48,8 @@ def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=1.0
         Defaults to `1.0`.
     noisef : float
         The amount of scatter to add to the mock data. Specifically, the clean analytic 
-        signal for one data point will be modified by 
-        `data = clean_signal + (clean_signal * (np.sqrt(noisef) * np.random.randn(1)))`.
+        signal for one data point will be modified by a gaussian smoothing as
+        `data = clean_signal * (np.sqrt(noisef) * np.random.randn(1) + 1)`.
         Defaults to `0.1`.
     bin_data : bool
         whether or not to fit to shears averaged in radial bins, rather than to each individual source.
@@ -142,8 +142,8 @@ def _gen_mock_data(zl, r200c, c, nsources, fov, z_dls, noisef=0.1):
     mock_lens.yt = yt_data
 
     k_clean = sigma_clean / sigmaCrit
-    noise = (np.sqrt(noisef) * np.random.randn(len(r)))
-    k_data = k_clean + (k_clean * noise)
+    noise = (np.sqrt(noisef) * np.random.randn(len(r)) + 1)
+    k_data = k_clean * noise
     mock_lens.k = k_data
 
     return [mock_lens, true_profile]
