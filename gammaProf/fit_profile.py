@@ -279,7 +279,6 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
  
     cost = np.zeros((n, n))
 
-    plt.plot(r, dSigma_data, 'x')
     for i in range(n):
         for j in range(n):
             grid_params = [rsamp[j], csamp[i]]

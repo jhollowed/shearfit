@@ -210,7 +210,7 @@ class NFW:
                 self.r200c = r200c_resamples[i]
                 self.c = c_resamples[i]
                 dsig_bootstrap[i] = self._delta_sigma(r)
-            
+
             # estimate asymmetric 1-sigma errors
             for i in range(len(r)):
                 dsig_r = np.sort(dsig_bootstrap.T[i])
@@ -223,7 +223,6 @@ class NFW:
                 except IndexError:
                     dsig_stderr[i][:] = dsig_stderr[i-1][:]
 
-            
             # restore profile and compute delta sigma; return
             self.r200c = r200c
             self.c = c
