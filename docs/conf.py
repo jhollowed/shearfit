@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# gammaProf documentation build configuration file, created by
+# shearfit documentation build configuration file, created by
 # sphinx-quickstart on Thu Mar 14 17:44:29 2019.
 #
 # This file is execfile()d with the current directory set to its
@@ -52,7 +52,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'gammaProf'
+project = 'shearfit'
 copyright = '2019, Joe Hollowed'
 author = 'Joe Hollowed'
 
@@ -205,7 +205,7 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'gammaProfdoc'
+htmlhelp_basename = 'shearfitdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -227,7 +227,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'gammaProf.tex', 'gammaProf Documentation',
+    (master_doc, 'shearfit.tex', 'shearfit Documentation',
      'Joe Hollowed', 'manual'),
 ]
 
@@ -257,7 +257,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'gammaprof', 'gammaProf Documentation',
+    (master_doc, 'gammaprof', 'shearfit Documentation',
      [author], 1)
 ]
 
@@ -271,8 +271,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'gammaProf', 'gammaProf Documentation',
-     author, 'gammaProf', 'One line description of project.',
+    (master_doc, 'shearfit', 'shearfit Documentation',
+     author, 'shearfit', 'One line description of project.',
      'Miscellaneous'),
 ]
 

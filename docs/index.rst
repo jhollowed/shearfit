@@ -1,18 +1,18 @@
-Welcome to gammaProf's documentation!
+Welcome to shearfit's documentation!
 =====================================
 
 Contents:
 
-.. autoclass:: gammaProf.analytic_profiles.NFW
+.. autoclass:: shearfit.analytic_profiles.NFW
    :members:
 
-.. autoclass:: gammaProf.lensing_system.obs_lens_system
+.. autoclass:: shearfit.lensing_system.obs_lens_system
    :members:
 
-.. automodule:: gammaProf.mass_concentration
+.. automodule:: shearfit.mass_concentration
    :members:
 
-.. automodule:: gammaProf.fit_profile
+.. automodule:: shearfit.fit_profile
    :members:
 
 .. toctree::
