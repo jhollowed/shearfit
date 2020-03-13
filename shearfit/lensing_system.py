@@ -335,8 +335,7 @@ class obs_lens_system:
         
         # critical surface mass density Σ_c in proper (M_sun/h)/(pc/h)^2; 
         # final quotient scales to Mpc to pc, adds an h to get (M_sun/h)/(pc/h)^2, 
-        # and an a^2 to get to a comoving surface area
         Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
-        Sigma_crit = Sigma_crit * a**2 / (1e12 * self._cosmo.h)
+        Sigma_crit = Sigma_crit / (1e12 * self._cosmo.h**2.5)
 
         return Sigma_crit

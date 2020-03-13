@@ -249,7 +249,8 @@ class NFW:
         Returns
         -------
         dSigma : float array
-            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`
+            The differential surface density :math:`\\Delta\\Sigma` 
+            in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`
         """
 
         # 1e6 in rs to get Mpc/h to pc/h
