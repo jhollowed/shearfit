@@ -26,13 +26,13 @@ class NFW:
     ----------
     r200c : float
         The comoving radius containing mass :math:`M_{200c}`, or an average density of 
-        :math:`200\\rho_\\text{crit}`, in :math:`Mpc/h`.
+        :math:`200\\rho_\\text{crit}`, in :math:`Mpc`.
     c : float 
         The concentration.
     zl : float 
         The source redshift.
     r200c_err : float, optional
-        The 1-sigma error in the radius, in :math:`Mpc/h`. Defaults to 0.
+        The 1-sigma error in the radius, in :math:`Mpc`. Defaults to 0.
     c_err : float, optional
         The 1-sigma error in the concentration. Defaults to 0.
     cosmo : object, optional
@@ -41,7 +41,7 @@ class NFW:
     Attributes
     ----------
     rs : float
-        The scale radius, `r200c / c` in comoving :math:`Mpc/h`.
+        The scale radius, `r200c / c` in comoving :math:`Mpc`.
     x : float array
         The dimensionless radii `r/rs` for any input `r` 
         (not initialized until `delta_sigma()` is called).
@@ -52,7 +52,7 @@ class NFW:
         Computes :math:`\\Delta\\Sigma(r)` for an NFW lens, given sources at projected 
         comoving radii :math:`r`.
     radius_to_mass():
-        Converts the :math:`r_{200c}` radius of the halo to a mass in :math:`M_\\odot/h`
+        Converts the :math:`r_{200c}` radius of the halo to a mass in :math:`M_\\odot`
     """
 
     def __init__(self, r200c, c, zl, r200c_err=0, c_err=0, cosmo=WMAP7): 
@@ -108,12 +108,12 @@ class NFW:
         Returns
         -------
         m200c : float
-            The halo mass :math:`M_{200c}` in units of :math:`M_\\odot/h`.
+            The halo mass :math:`M_{200c}` in units of :math:`M_\\odot`.
         """
        
-        # critical density in proper (M_sun/h) / (Mpc/h)^3
+        # critical density in proper M_sun/Mpc^3
         rho_crit = self._cosmo.critical_density(self.zl)
-        rho_crit = rho_crit.to(units.Msun/units.Mpc**3).value / self._cosmo.h**2
+        rho_crit = rho_crit.to(units.Msun/units.Mpc**3).value
         a = 1/(1+self.zl)
         
         # need r200c in proper distance as well 
@@ -170,7 +170,7 @@ class NFW:
         Parameters
         ----------
         r : float array
-            Comoving projected radius relative to the center of the lens, in :math:`Mpc/h`; 
+            Comoving projected radius relative to the center of the lens, in :math:`Mpc`; 
             :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`.
         bootstrap : boolean, optional
             Whether or not to perform a bootstrap resampling of the :math:`r_{200c}` and :math:`c`
@@ -184,7 +184,7 @@ class NFW:
         Returns
         -------
         float array or list of float arrays
-            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`, 
+            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`M_{\\odot}/\\text{pc}^2`, 
             for each value of `r`. If `bootstrap` is `True`, then pack this array into a two-element 
             list, which is followed by the estaimted :math:`1\\sigma` error at each of those locations.
         """
@@ -244,26 +244,25 @@ class NFW:
         ----------
         r : float array
             Comoving projected radius relative to the center of the lens; 
-            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc/h`.
+            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc`.
         
         Returns
         -------
         dSigma : float array
             The differential surface density :math:`\\Delta\\Sigma` 
-            in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`
+            in comoving :math:`M_{\\odot}/\\text{pc}^2`
         """
 
-        # 1e6 in rs to get Mpc/h to pc/h
+        # 1e6 in rs to get Mpc to pc
         rs = self._rs * 1e6
         x = r / self._rs
         a = 1/(1+self.zl)
 
         # define critical density rho_crit in proper M_sun pc^-3,
-        # 1/h^2 in rho_crit to get units to match radius (M_sun pc^-3 --> M_sun/h (pc/h)^-3)
         rho_crit = self._cosmo.critical_density(self.zl)
-        rho_crit = rho_crit.to(units.Msun/units.pc**3).value / self._cosmo.h**2
+        rho_crit = rho_crit.to(units.Msun/units.pc**3).value
         
-        # proper mean surface density dSigma in (solMass/h) (pc/h)^2
+        # proper mean surface density dSigma in (solMass) (pc)^2
         # factor of a^2 to get comoving surface area
         dSigma = (rs * self._del_c * rho_crit) * self._g(x)
         dSigma = dSigma * a**2
@@ -280,23 +279,22 @@ class NFW:
         ----------
         r : float array
             Comoving projected radius relative to the center of the lens; 
-            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc/h`.
+            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc`.
         
         Returns
         -------
         dSigma : float array
-            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`(M_{\\odot}/h)/(\\text{pc}/h)^2`
+            The modified surface density :math:`\\Delta\\Sigma` in comoving :math:`M_{\\odot}/\\text{pc}^2`
         """
  
-        # 1e6 in rs to get Mpc/h to pc/h
+        # 1e6 in rs to get Mpc to pc
         rs = self._rs * 1e6
         x = r / self._rs
         a = 1/(1+self.zl)
 
         # define critical density rho_crit in proper M_sun pc^-3,
-        # 1/h^2 in rho_crit to get units to match radius (M_sun pc^-3 --> M_sun/h (pc/h)^-3)
         rho_crit = self._cosmo.critical_density(self.zl)
-        rho_crit = rho_crit.to(units.Msun/units.pc**3).value / self._cosmo.h**2
+        rho_crit = rho_crit.to(units.Msun/units.pc**3).value
          
         # NFW prediction for surface density
         f1 = lambda x: (2/(x**2-1)) * (1 - ( 2/np.sqrt(1-x**2) * np.arctanh(np.sqrt((1-x)/(1+x))) ))
@@ -312,7 +310,7 @@ class NFW:
         sigma[m2] = 2./3.
         sigma[m3] = f2( x[m3] )
 
-        # proper mean surface density dSigma in (solMass/h) (pc/h)^2
+        # proper mean surface density dSigma in (solMass) (pc)^2
         # add cosmology dependence prefactor, and a^2 to get comoving surface area
         prefactor = rs * self._del_c * rho_crit
         sigma_nfw = prefactor * sigma * a**2

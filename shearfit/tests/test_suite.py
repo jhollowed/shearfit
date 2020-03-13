@@ -80,16 +80,16 @@ class TestNFW(TestCase):
         rho_crit = rho_crit.to(units.Msun/units.Mpc/units.pc**2).value
        
         this_NFW = NFW(halo['r'], halo['c'], halo['zl'])
-        clusterlens_halo= cl.SurfaceMassDensity( rs = [this_NFW._rs / cosmo.h],
+        clusterlens_halo= cl.SurfaceMassDensity( rs = [this_NFW._rs],
                                                  delta_c = [this_NFW.del_c], 
                                                  rho_crit = [rho_crit], 
                                                  offsets= [0],
-                                                 rbins = r_bins / cosmo.h)
+                                                 rbins = r_bins)
         
         # compute differential surface mass density
-        # factor of a**2/h in clusterlens_dsig to get a comoving surface area in (pc/h)^2
+        # factor of a**2 in clusterlens_dsig to get a comoving surface area in pc^2
         this_dsig = this_NFW.delta_sigma(r_bins)
-        clusterlens_dsig = clusterlens_halo.deltasigma_nfw().value[0] * a**2 / (cosmo.h)
+        clusterlens_dsig = clusterlens_halo.deltasigma_nfw().value[0] * a**2
 
         # compute fractional difference and assert error tolerance
         fdiff = (this_dsig - clusterlens_dsig) / (clusterlens_dsig)
@@ -120,16 +120,16 @@ class TestNFW(TestCase):
         rho_crit = rho_crit.to(units.Msun/units.Mpc/units.pc**2).value
        
         this_NFW = NFW(halo['r'], halo['c'], halo['zl'])
-        clusterlens_halo= cl.SurfaceMassDensity( rs = [this_NFW._rs / cosmo.h],
+        clusterlens_halo= cl.SurfaceMassDensity( rs = [this_NFW._rs],
                                                  delta_c = [this_NFW.del_c], 
                                                  rho_crit = [rho_crit], 
                                                  offsets= [0],
-                                                 rbins = r_bins / cosmo.h)
+                                                 rbins = r_bins)
         
         # compute surface mass density
-        # factor of a**2/h in clusterlens_dsig to get a comoving surface area in (pc/h)^2
+        # factor of a**2 in clusterlens_dsig to get a comoving surface area in pc^2
         this_sigma = this_NFW.sigma(r_bins)
-        clusterlens_sigma = clusterlens_halo.sigma_nfw().value[0] * a**2 / (cosmo.h)
+        clusterlens_sigma = clusterlens_halo.sigma_nfw().value[0] * a**2
         
         # compute fractional difference and assert error tolerance
         fdiff = (this_sigma - clusterlens_sigma) / (clusterlens_sigma)
@@ -158,7 +158,7 @@ class TestNFW(TestCase):
         this_lens = obs_lens_system(zl=halo['zl'])
         
         # compute critical surface density 
-        # factor of a**2/(1e12 * h) in birrer_sig_crit to get a comoving surface area in (pc/h)^2
+        # factor of a**2/(1e12) in birrer_sig_crit to get a comoving surface area in (pc)^2
         this_sig_crit = this_lens.calc_sigma_crit(zs = z_sources)
         birrer_sig_crit = np.zeros(len(z_sources))       
         for i in range(len(z_sources)):
@@ -166,7 +166,7 @@ class TestNFW(TestCase):
             Ds = cosmo.angular_diameter_distance(z_sources[i]).value
             Dds = Ds - Dd
             birrer_lens = lenstronomy(Dd, Ds, Dds)
-            birrer_sig_crit[i] = birrer_lens.epsilon_crit * a**2 / (1e12 * cosmo.h)
+            birrer_sig_crit[i] = birrer_lens.epsilon_crit * a**2 / (1e12)
         
         # compute fractional difference and assert error tolerance
         fdiff = (this_sig_crit - birrer_sig_crit) / (birrer_sig_crit)

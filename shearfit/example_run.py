@@ -35,7 +35,7 @@ def mock_example_run(zl=0.35, r200c=2, c=3.7, nsources=1000, fov=1500, z_dls=1.0
     zl : float
         The lens redshift. Defaults to `0.35`.
     r200c : float
-        The :math:`r_{200c}` radius of the lens, in Mpc/h. Defaults to `4.25`.
+        The :math:`r_{200c}` radius of the lens, in Mpc. Defaults to `4.25`.
     c : float
         The dimensionless NFW concentration of the lens. Defaults to `4.0`.
     nsouces : int
@@ -323,7 +323,7 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
 
     # format
     ax.legend(fontsize=14, loc='upper right')
-    ax.set_xlabel(r'$r\>\>\lbrack\mathrm{Mpc/h}\rbrack$', fontsize=14)
+    ax.set_xlabel(r'$r\>\>\lbrack\mathrm{Mpc}\rbrack$', fontsize=14)
     ax.set_ylabel(r'$\Delta\Sigma\>\>\lbrack\mathrm{M}_\odot\mathrm{pc}^{-2}\rbrack$', fontsize=14)
 
 
@@ -354,7 +354,7 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     ax2.legend(fontsize=14, loc='upper right')
     cbar = f.colorbar(chi2, ax=ax2)
     cbar.set_label(r'$\left[(\chi^2/\mathrm{min}(\chi^2))\right]^{-1}$', fontsize=14)
-    ax2.set_xlabel(r'$r_{200c}\>\>\left[\mathrm{Mpc/h}\right]$', fontsize=14)
+    ax2.set_xlabel(r'$r_{200c}\>\>\left[\mathrm{Mpc}\right]$', fontsize=14)
     ax2.set_ylabel(r'$c_{200c}$', fontsize=14)
 
     plt.tight_layout()
