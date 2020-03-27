@@ -144,15 +144,20 @@ class obs_lens_system:
     def _comp_bg_quantities(self):
         """
         Computes background source quantites that depend on the data vectors initialized in 
-        set_baclground (this function meant to be called from the setter method of each 
+        set_background (this function meant to be called from the setter method of each 
         source property).
         """
 
         self._check_sources()
         
-        # compute halo-centric projected radial separation of each source, in comoving Mpc
-        self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
-                                  self._cosmo.comoving_distance(self.zl).value 
+        # compute halo-centric projected radial separation of each source, in proper Mpc
+        #self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
+        #                          self._cosmo.comoving_distance(self.zl).value 
+        arcsec_per_Mpc = (self._cosmo.arcsec_per_kpc_proper(self.zl)).to( units.arcsec / units.Mpc )
+        angular_sep_arcsec = np.linalg.norm([180/np.pi * self._theta1 * 3600, 
+                                             180/np.pi * self._theta2 * 3600], axis=0) * units.arcsec
+        self._r = (angular_sep_arcsec / arcsec_per_Mpc).value
+
         if(self._has_shear12):
             # compute tangential shear yt
             self._phi = np.arctan(self._theta2/self._theta1)
@@ -176,7 +181,7 @@ class obs_lens_system:
             then the contents of the return array is 
             [theta1, theta2, r, zs, y1, y2, yt], where theta1 and theta2 are the 
             halo-centric angular positions of the sources in arcseconds, r is the 
-            halo-centric projected radial distance of each source in comoving 
+            halo-centric projected radial distance of each source in proper 
             :math:`\\text{Mpc}`, zs are the source redshifts, y1 and y2 are the 
             shear components of the sources, and yt are the source tangential shears.
             If only the tangential shear is being used, then y1 and y2 are omitted
@@ -215,7 +220,7 @@ class obs_lens_system:
     @property
     def r(self): return self._r
     def r(self, value):
-        raise Exception('Cannot change source \'r\' value; update source redshifts instead')
+        raise Exception('Cannot change source \'r\' value; update angular positions instead')
 
     @property
     def theta1(self): return self._theta1
@@ -300,7 +305,7 @@ class obs_lens_system:
     def calc_sigma_crit(self, zs=None):
         '''
         Computes :math:`\\Sigma_\\text{c}(z_s)`, the critical surface density as a function of source
-        redshift :math:`z_s`, at the lens redshift :math:`z_l`, in comoving :math:`M_{\\odot}/\\text{pc}^2`, 
+        redshift :math:`z_s`, at the lens redshift :math:`z_l`, in proper :math:`M_{\\odot}/\\text{pc}^2`, 
         assuming a flat cosmology
 
         Parameters
@@ -312,16 +317,13 @@ class obs_lens_system:
         Returns
         -------
         Sigma_crit : float or float array 
-            The critical surface density, :math:`\\Sigma_\\text{c}`, in comoving
+            The critical surface density, :math:`\\Sigma_\\text{c}`, in proper
             :math:`M_{\\odot}/\\text{pc}^2` 
         '''
         
         if(zs is None): 
             self._check_sources()
             zs = self._zs
-        
-        # scale factors
-        a = 1/(1+self.zl)
 
         # G in Mpc^3 M_sun^-1 Gyr^-2,
         # speed of light C in Mpc Gyr^-1
@@ -334,7 +336,7 @@ class obs_lens_system:
         Dls = Ds - Dl
         
         # critical surface mass density Σ_c in proper M_sun/pc^2; 
-        # final quotient scales to Mpc to pc, adds an h to get M_sun/pc^2, 
+        # final quotient scales to Mpc to pc
         Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
         Sigma_crit = Sigma_crit / (1e12)
 

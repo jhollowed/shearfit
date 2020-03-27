@@ -110,7 +110,7 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         bounds = ([rad_bounds[0], rad_bounds[1]])
     
     res = optimize.least_squares(_nfw_fit_residual, fit_params, 
-                                 args=(profile, r, dSigma_data, cM_relation, profile.cosmo), 
+                                 args=(profile, r, dSigma_data, cM_relation), 
                                  bounds = bounds)
     
     # if inferring the concentration from a c-M relation, then the final minimization 
@@ -118,7 +118,7 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     # intrinsic c-M scatter
     if(cM_relation is not None):
         m200c = profile.radius_to_mass()
-        c_final, c_err_final = cM_func(m200c, profile.zl, profile.cosmo)
+        c_final, c_err_final = cM_func(m200c, profile.zl, profile._cosmo)
         profile.c = c_final
         profile.c_err = c_err_final
     else:
@@ -149,11 +149,11 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
 
             res_i = optimize.least_squares(_nfw_fit_residual, fit_params, 
                                            args=(bootstrap_profile, r_i, dSigma_data_i, 
-                                           cM_relation, profile.cosmo), bounds = bounds)
+                                           cM_relation), bounds = bounds)
             if(cM_relation is not None):
                 m200c = bootstrap_profile.radius_to_mass()
                 params_bootstrap[n][0] = res_i.x[0]
-                params_bootstrap[n][1], c_intr_scatter_bootstrap[n] = cM_func(m200c, profile.zl, profile.cosmo)
+                params_bootstrap[n][1], c_intr_scatter_bootstrap[n] = cM_func(m200c, profile.zl, profile._cosmo)
             else:
                 params_bootstrap[n] = res_i.x
                 c_intr_scatter_bootstrap[n] = 0
@@ -173,7 +173,7 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     return [res, param_err]
 
     
-def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation, profile.cosmo):
+def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
     """
     Evaluate the residual of an NFW profile fit to data, given updated parameter values. 
     This function meant to be called iteratively from `fit_nfw_profile_lstq` only.
@@ -222,7 +222,7 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation, profile.
         
         cM_func = {'child2018':child2018}[cM_relation]
         m200c = profile.radius_to_mass()
-        c_new, _ = cM_func(m200c, profile.zl, profile.cosmo)
+        c_new, _ = cM_func(m200c, profile.zl, profile._cosmo)
         profile.c = c_new
         
     # evaluate NFW form
