@@ -152,11 +152,17 @@ class obs_lens_system:
         
         # compute halo-centric projected radial separation of each source, in proper Mpc
         #self._r = np.linalg.norm([np.tan(self._theta1), np.tan(self._theta2)], axis=0) * \
-        #                          self._cosmo.comoving_distance(self.zl).value 
-        arcsec_per_Mpc = (self._cosmo.arcsec_per_kpc_proper(self.zl)).to( units.arcsec / units.Mpc )
-        angular_sep_arcsec = np.linalg.norm([180/np.pi * self._theta1 * 3600, 
-                                             180/np.pi * self._theta2 * 3600], axis=0) * units.arcsec
-        self._r = (angular_sep_arcsec / arcsec_per_Mpc).value
+        #                          self._cosmo.comoving_distance(self.zl).value
+        
+        #arcsec_per_Mpc = (self._cosmo.arcsec_per_kpc_proper(self.zl)).to( units.arcsec / units.Mpc )
+        #angular_sep_arcsec = np.linalg.norm([180/np.pi * self._theta1 * 3600, 
+        #                                     180/np.pi * self._theta2 * 3600], axis=0) * units.arcsec
+        #self._r = (angular_sep_arcsec / arcsec_per_Mpc).value
+       
+        # Wright & Brainerd, under Eq.10
+        self._r = np.linalg.norm([self._theta1, self._theta2], axis=0) * \
+                                  self._cosmo.angular_diameter_distance(self.zl).value
+        
 
         if(self._has_shear12):
             # compute tangential shear yt

@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from analytic_profiles import NFW
 from mass_concentration import child2018
 from lensing_system import obs_lens_system
+cM_dict = {'child2018':child2018}
 
 def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_relation=None, 
                          bin_data = False, bins=None, bootstrap=False, bootN = 1000, bootF = 1.0, 
@@ -105,7 +106,7 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         bounds = ([rad_bounds[0], conc_bounds[0]],
                   [rad_bounds[1], conc_bounds[1]])
     else:
-        cM_func = {'child2018':child2018}[cM_relation]
+        cM_func = cM_dict[cM_relation]
         fit_params = [rad_init]
         bounds = ([rad_bounds[0], rad_bounds[1]])
     
@@ -220,7 +221,7 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
         r200c = fit_params[0]
         profile.r200c = r200c
         
-        cM_func = {'child2018':child2018}[cM_relation]
+        cM_func = cM_dict[cM_relation]
         m200c = profile.radius_to_mass()
         c_new, _ = cM_func(m200c, profile.zl, profile._cosmo)
         profile.c = c_new
