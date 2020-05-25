@@ -344,7 +344,7 @@ def _fit_test_data(lens, true_profile, makeplot=True, showfig=False, out_dir='.'
     for i in range(len(tmp_m200c)):
         tmp_profile.r200c = grid_pos[0][0][i]
         tmp_m200c[i] = tmp_profile.radius_to_mass()
-    tmp_c, tmp_dc = cm(tmp_m200c)
+    tmp_c, tmp_dc = cm(tmp_m200c, zl, tmp_profile._cosmo)
     ax2.plot(grid_pos[0][0], tmp_c, '--k', lw=2, label=r'$c\mathrm{-}M\mathrm{\>relation\>(Child+2018)}$')
     ax2.fill_between(grid_pos[0][0], tmp_c - tmp_dc, tmp_c + tmp_dc, color='k', alpha=0.1, lw=0)
 
