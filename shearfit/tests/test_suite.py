@@ -70,7 +70,7 @@ class TestNFW(TestCase):
             package and `halotools` is above this value, then the test is failed.
         '''
         
-        # decalre halo objects and parameters
+        # declare halo objects and parameters
         halo = _test_halo()
         r_bins = np.linspace(0.1, halo['r']*3, 100)
         a = 1/(1+halo['zl'])
@@ -87,9 +87,8 @@ class TestNFW(TestCase):
                                                  rbins = r_bins)
         
         # compute differential surface mass density
-        # factor of a**2 in clusterlens_dsig to get a comoving surface area in pc^2
         this_dsig = this_NFW.delta_sigma(r_bins)
-        clusterlens_dsig = clusterlens_halo.deltasigma_nfw().value[0] * a**2
+        clusterlens_dsig = clusterlens_halo.deltasigma_nfw().value[0]
 
         # compute fractional difference and assert error tolerance
         fdiff = (this_dsig - clusterlens_dsig) / (clusterlens_dsig)
@@ -127,9 +126,8 @@ class TestNFW(TestCase):
                                                  rbins = r_bins)
         
         # compute surface mass density
-        # factor of a**2 in clusterlens_dsig to get a comoving surface area in pc^2
         this_sigma = this_NFW.sigma(r_bins)
-        clusterlens_sigma = clusterlens_halo.sigma_nfw().value[0] * a**2
+        clusterlens_sigma = clusterlens_halo.sigma_nfw().value[0]
         
         # compute fractional difference and assert error tolerance
         fdiff = (this_sigma - clusterlens_sigma) / (clusterlens_sigma)
@@ -158,7 +156,7 @@ class TestNFW(TestCase):
         this_lens = obs_lens_system(zl=halo['zl'])
         
         # compute critical surface density 
-        # factor of a**2/(1e12) in birrer_sig_crit to get a comoving surface area in (pc)^2
+        # factor of 1/(1e12) in birrer_sig_crit to get (pc)^2
         this_sig_crit = this_lens.calc_sigma_crit(zs = z_sources)
         birrer_sig_crit = np.zeros(len(z_sources))       
         for i in range(len(z_sources)):
@@ -166,7 +164,7 @@ class TestNFW(TestCase):
             Ds = cosmo.angular_diameter_distance(z_sources[i]).value
             Dds = Ds - Dd
             birrer_lens = lenstronomy(Dd, Ds, Dds)
-            birrer_sig_crit[i] = birrer_lens.epsilon_crit * a**2 / (1e12)
+            birrer_sig_crit[i] = birrer_lens.epsilon_crit / (1e12)
         
         # compute fractional difference and assert error tolerance
         fdiff = (this_sig_crit - birrer_sig_crit) / (birrer_sig_crit)
