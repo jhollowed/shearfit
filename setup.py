@@ -11,6 +11,6 @@ setup(
     packages=['shearfit'],
     python_requires='>=3.5',
     test_suite='nose.collector',
-    tests_require=['nose', 'halotools', 'cluster-lensing', 'lenstronomy']
+    tests_require=['nose', 'halotools', 'cluster-lensing', 'lenstronomy'],
     zip_safe=False
 )
