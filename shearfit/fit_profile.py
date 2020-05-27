@@ -9,7 +9,7 @@ from mass_concentration import child2018
 from lensing_system import obs_lens_system
 cM_dict = {'child2018':child2018}
 
-def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_relation=None, 
+def fit_nfw_profile_lstq(data, profile, r200_bounds, conc_bounds = [0,10], rmin=0, rmax=None, cM_relation=None, 
                          bin_data = False, bins=None, bootstrap=False, bootN = 1000, bootF = 1.0, 
                          replace=True, skipShear=False):
     """
@@ -34,10 +34,18 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
         projected surface density. This object is modified by the present function; the 
         final fit parameters, and their errors, will be given in the `r200c`, `c`, `r200c_err`, 
         and `c_err` attributes of `profile`.
-    rad_bounds : 2-element list
+    r200_bounds : 2-element list
         The bounds (tophat prior) for the first fitting parameter, :math:`r_{200c}`.
     conc_bounds : 2-element list, optional
         The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to `[0,10]`.
+    rmin : float, optional
+        The minimum radial distance of sources to include in the fit in Mpc (e.g. rmin = 0.3 will
+        remove the inner 300kpc/h of source information). Defaults to 0.
+    rmax : float, optional
+        The maximum radial distance of sources to include in the fit in Mpc (e.g. rmin = 2.0 will
+        trim the source popiulation beyond 2Mpc. Defaults to None, in which case rmax will automatically be
+        set to the furthest radial source position. This default will also be imposed if the input rmax is 
+        greater than the size of the FOV.
     cM_relation : string, optional
         The name of a :math:`c-M` relation to use in the fitting procedure. If `None`, then the 
         minimization will proceed with respect to both :math:`r_200c` and :math:`c`. If provided
@@ -81,20 +89,27 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     
     # get the background data, and scale the tangential shear to ΔΣ
     sources = data.get_background()
+    r_all = sources['r']
     Ec = data.calc_sigma_crit()
     if(not skipShear):
         dSigma_data_all = sources['yt'] * Ec
     else:
         dSigma_data_all = sources[''] * Ec
     
-    r_all = sources['r']
+    # trim sources in radial dimension
+    if(rmax is None): radial_mask = (r_all >= rmin)
+    else: radial_mask = np.logical_and(r_all >= rmin, r_all <= rmax)
+    r_all = r_all[radial_mask]
+    dSigma_data_all = dSigma_data_all[radial_mask]
+
+    # bin data
     if(bin_data == True):
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
         [dSigma_data,_,_] = stats.binned_statistic(r_all, dSigma_data_all, statistic='mean', bins=bins)
         [r,_,_] = stats.binned_statistic(r_all, r_all, statistic='mean', bins=bins)
     else:
         r = r_all
-        dSigma_data = dSigma_data_all
+        dSigma_data = dSigma_data_all 
 
     # get parameter guesses from initial NFW form
     rad_init = profile.r200c
@@ -103,12 +118,12 @@ def fit_nfw_profile_lstq(data, profile, rad_bounds, conc_bounds = [0,10], cM_rel
     # initiate the fitting algorithm
     if(cM_relation is None):
         fit_params = [rad_init, conc_init]
-        bounds = ([rad_bounds[0], conc_bounds[0]],
-                  [rad_bounds[1], conc_bounds[1]])
+        bounds = ([r200_bounds[0], conc_bounds[0]],
+                  [r200_bounds[1], conc_bounds[1]])
     else:
         cM_func = cM_dict[cM_relation]
         fit_params = [rad_init]
-        bounds = ([rad_bounds[0], rad_bounds[1]])
+        bounds = ([r200_bounds[0], r200_bounds[1]])
     
     res = optimize.least_squares(_nfw_fit_residual, fit_params, 
                                  args=(profile, r, dSigma_data, cM_relation), 
@@ -209,14 +224,12 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
    
     # update the NFW profile object
     if(len(fit_params) > 1):
-        
         # floating concentration
         r200c, c = fit_params[0], fit_params[1]
         profile.r200c = r200c
         profile.c = c
     
-    else:
-        
+    else: 
         # concentration modeled from c-M relation
         r200c = fit_params[0]
         profile.r200c = r200c
@@ -234,7 +247,8 @@ def _nfw_fit_residual(fit_params, profile, r, dSigma_data, cM_relation):
     return residuals 
 
 
-def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n = 100, bin_data=False, bins=None):
+def fit_nfw_profile_gridscan(data, profile, r200_bounds, conc_bounds = [0,10], rmin = 0, rmax = None, 
+                             n = 100, bin_data=False, bins=None):
     """
     Performs an NFW parameter sweep on :math:`r_{200c}` and :math:`c_{200c}`, evaluating
     the squared sum of residuals against the input data for each sample point in the
@@ -250,13 +264,21 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
         An instance of a `NFW` object as provided by `analytic_profiles.py`. This is
         an object representing an analytic NFW profile, and computes the predicted 
         projected surface density.
-    rad_bounds : 2-element list
+    r200_bounds : 2-element list
         The bounds (tophat prior) for the first fitting parameter, :math:`r_{200c}`.
     conc_bounds : 2-element list, optional
         The bounds (tophat prior) for the second fitting parameter, :math:`c`. Defaults to [0,10].
+    rmin : float, optional
+        The minimum radial distance of sources to include in the fit in Mpc (e.g. rmin = 0.3 will
+        remove the inner 300kpc/h of source information). Defaults to 0.
+    rmax : float, optional
+        The maximum radial distance of sources to include in the fit in Mpc (e.g. rmin = 2.0 will
+        trim the source popiulation beyond 2Mpc. Defaults to None, in which case rmax will automatically be
+        set to the furthest radial source position. This default will also be imposed if the input rmax is 
+        greater than the size of the FOV.
     n : int
         The number of sample points in each dimension of the parameter grid, which will be 
-        distributed linearly between the limits given by `rad_bounds` and `conc_bounds`.
+        distributed linearly between the limits given by `r200_bounds` and `conc_bounds`.
     bin_data : boolean, optional
         Whether or not to average the shears given by the `data` object in radial bins. If True, fit 
         to the resulting binned averages rather than the input data points. Defaults to `False`.
@@ -273,7 +295,7 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
 
     profile = copy.deepcopy(profile)
 
-    rsamp = np.linspace(rad_bounds[0], rad_bounds[1], n)
+    rsamp = np.linspace(r200_bounds[0], r200_bounds[1], n)
     csamp = np.linspace(conc_bounds[0], conc_bounds[1], n)
     
     # get the background data, and scale the tangential shear to ΔΣ 
@@ -281,6 +303,14 @@ def fit_nfw_profile_gridscan(data, profile, rad_bounds, conc_bounds = [0,10], n 
     Ec = data.calc_sigma_crit()
     dSigma_data = sources['yt'] * Ec
     r = sources['r']
+    
+    # trim sources in radial dimension
+    if(rmax is None): radial_mask = (r >= rmin)
+    else: radial_mask = np.logical_and(r >= rmin, r <= rmax)
+    r = r[radial_mask]
+    dSigma_data = dSigma_data[radial_mask]
+    
+    # bin data
     if(bin_data == True):
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
         [dSigma_data,_,_] = stats.binned_statistic(r, dSigma_data, statistic='mean', bins=bins)

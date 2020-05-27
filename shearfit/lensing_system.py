@@ -170,7 +170,7 @@ class obs_lens_system:
             #self._yt = -(self._y1 * np.cos(2*self._phi) + 
             #            self._y2*np.sin(2*self._phi))
             self._yt = np.sqrt(self._y1**2 + self._y2**2)
-    
+ 
     
     def get_background(self):
         '''
