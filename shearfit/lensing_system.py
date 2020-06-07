@@ -87,7 +87,7 @@ class obs_lens_system:
         assert(self._has_sources), 'sources undefined; first run set_background()'
 
 
-    def set_radial_cuts(self, rmin=None, rmax=None)
+    def set_radial_cuts(self, rmin=None, rmax=None):
         '''
         Sets a class-wide radial mask which will be applied to data vectors returned from 
         `get_background()`, `calc_delta_sigma()`, `calc_delta_sigma_binned()`, and `calc_sigma_crit()`.
@@ -359,7 +359,7 @@ class obs_lens_system:
         '''
         if(zs is None): 
             self._check_sources()
-            zs = self._zs
+            zs = self._zs[self._radial_mask] 
 
         # G in Mpc^3 M_sun^-1 Gyr^-2,
         # speed of light C in Mpc Gyr^-1
@@ -373,13 +373,13 @@ class obs_lens_system:
         
         # critical surface mass density Σ_c in proper M_sun/pc^2; 
         # final quotient scales to Mpc to pc
-        Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
-        Sigma_crit = Sigma_crit / (1e12)
+        sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
+        sigma_crit = sigma_crit / (1e12)
 
-        return Sigma_crit[self._radial_mask]
+        return sigma_crit
 
 
-    def calc_delta_sigma(self)
+    def calc_delta_sigma(self):
         '''
         Computes :math:`\\Delta\\Sigma = \\gamma\\Sigma_c`, the differential surface density at the lens 
         redshift :math:`z_l`, in proper :math:`M_{\\odot}/\\text{pc}^2`, assuming a flat cosmology. 
@@ -397,7 +397,7 @@ class obs_lens_system:
         return delta_sigma
     
     
-    def calc_delta_sigma_binned(self, nbins, return_edges=False, return_std=False, return_gradients=False)
+    def calc_delta_sigma_binned(self, nbins, return_edges=False, return_std=False, return_gradients=False):
         '''
         Computes :math:`\\Delta\\Sigma = \\gamma\\Sigma_c`, the differential surface density at the lens 
         redshift :math:`z_l`, in proper :math:`M_{\\odot}/\\text{pc}^2`, assuming a flat cosmology. 
@@ -426,7 +426,7 @@ class obs_lens_system:
         
         self._check_sources()
         
-        yt = self._yt[self_radial_mask]
+        yt = self._yt[self._radial_mask]
         r = self._r[self._radial_mask]
         sigma_crit = self.calc_sigma_crit(self._zs)
         delta_sigma = yt*sigma_crit
@@ -447,9 +447,9 @@ class obs_lens_system:
             [r_count,_,_] = stats.binned_statistic(r, r, statistic='count', bins=nbins)
             r_se = r_std / r_count
             
-            return_arrays.extend([r_mean, r_std, r_se, delta_sigma_mean, delta_sigma_std, delta_sigma_se], 
+            return_arrays.extend([r_mean, r_std, r_se, delta_sigma_mean, delta_sigma_std, delta_sigma_se]) 
             return_dtypes.extend([('r_mean', float), ('r_std', float), ('r_se_mean', float), 
-                                  ('delta_sigma_mean', float), ('delta_sigma_std', float)), 
+                                  ('delta_sigma_mean', float), ('delta_sigma_std', float), 
                                   ('delta_sigma_se_mean', float)]) 
 
         # return bin edges
@@ -458,8 +458,7 @@ class obs_lens_system:
             return_dtypes.append(('bin_edges', float))
         
         # return bin gradient and errors... compute these manually
-        if(return_gradients):
-            
+        if(return_gradients): 
             bin_gradients  = np.zeros(nbins)
             for i in range(nbins):
                 bin_mask = np.logical_and(r > bin_edges[i], r < bin_eges[i+1])
