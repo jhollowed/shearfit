@@ -65,6 +65,9 @@ class obs_lens_system:
         self._has_shear2 = False
         self._has_kappa = False
         self._has_rho = False
+        self._has_radial_cuts = False
+        self._rmin = None
+        self._rmax = None
         self._theta1 = None
         self._theta2 = None
         self._zs = None
@@ -79,9 +82,32 @@ class obs_lens_system:
     def _check_sources(self):
         """
         Checks that set_background has been called (intended to be called before any
-        operations on the attributes initialized by set_background()).
+        operations on the attributes initialized by `set_background()`).
         """
         assert(self._has_sources), 'sources undefined; first run set_background()'
+
+
+    def set_radial_cuts(rmin=None, rmax=None)
+        '''
+        Sets a class-wide radial mask which will be applied to data vectors returned from 
+        `get_background()`, `calc_delta_sigma()`, `calc_delta_sigma_binned()`, and `calc_sigma_crit()`.
+
+        Parameters
+        ----------
+        rmin : float, optional
+            Sources with halo-centric radial distances less than this value will be removed by
+            application of the mask constructed from this function. Defautls to None, in which case
+            rmin is set to `0` (i.e. nothing is masked on the upper end of the radial distribution).
+        rmax : float, optional
+            Sources with halo-centric radial distances greater than this value will be removed by
+            application of the mask constructed from this function. Defautls to None, in which case
+            rmax is set to coincide with the maximum source radial distance (i.e. nothing is masked
+            on the upper end of the radial distribution).
+        '''
+        self._check_sources()
+        if(rmin is None): rmin = 0
+        if(rmax is None): rmax = np.max(self._r)
+        self._radial_mask = np.logical_and(self._r >= rmin, self._r <= rmax)
         
 
     def set_background(self, theta1, theta2, zs, y1=None, y2=None, yt=None, k=None, rho=None):
@@ -139,6 +165,7 @@ class obs_lens_system:
         if(rho is not None): self._has_rho = True
         self._has_sources = True
         self._comp_bg_quantities()
+        self.set_radial_cuts(None, None)
 
 
     def _comp_bg_quantities(self):
@@ -211,10 +238,11 @@ class obs_lens_system:
         if(self._has_rho):
             bg_arrays.append(self._rho)
             bg_dtypes.append(('rho', float))
-       
+      
+        bg_arrays = [arr[self._radial_mask] for arr in bg_arrays]
         bg = np.rec.fromarrays(bg_arrays, dtype = bg_dtypes) 
         return bg
-    
+     
 
     @property
     def cosmo(self): return self._cosmo
@@ -290,7 +318,10 @@ class obs_lens_system:
             self._y1= None
             self._y2 = None
         self._comp_bg_quantities()
-   
+    
+    @property
+    def get_radial_cuts(self): return [self._rmin, self._rmax]
+     
 
     def _k_rho(self):
         '''
@@ -326,7 +357,6 @@ class obs_lens_system:
             The critical surface density, :math:`\\Sigma_\\text{c}`, in proper
             :math:`M_{\\odot}/\\text{pc}^2` 
         '''
-        
         if(zs is None): 
             self._check_sources()
             zs = self._zs
@@ -346,4 +376,99 @@ class obs_lens_system:
         Sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
         Sigma_crit = Sigma_crit / (1e12)
 
-        return Sigma_crit
+        return Sigma_crit[self._radial_mask]
+
+
+    def calc_delta_sigma(self)
+        '''
+        Computes :math:`\\Delta\\Sigma = \\gamma\\Sigma_c`, the differential surface density at the lens 
+        redshift :math:`z_l`, in proper :math:`M_{\\odot}/\\text{pc}^2`, assuming a flat cosmology. 
+ 
+        Returns
+        -------
+        delta_sigma : float or float array 
+            The differential surface density, :math:`\\Delta\\Sigma = \\gamma\\Sigma_c`, in proper
+            :math:`M_{\\odot}/\\text{pc}^2 
+        ''' 
+        self._check_sources()
+        yt = self._yt[self._radial_mask]
+        sigma_crit = self.calc_sigma_crit(self._zs)
+        delta_sigma = yt*sigma_crit
+        return delta_sigma
+    
+    
+    def calc_delta_sigma_binned(self, nbins, return_edges=False, return_std=False)
+        '''
+        Computes :math:`\\Delta\\Sigma = \\gamma\\Sigma_c`, the differential surface density at the lens 
+        redshift :math:`z_l`, in proper :math:`M_{\\odot}/\\text{pc}^2`, assuming a flat cosmology. 
+ 
+        Parameters
+        ----------
+        nbins : int
+            Number of bins to place the data into. The bin edges will be distributed uniformly in radial space
+            (i.e. the bin widths will be constant, rather than bin areas)
+        return_edges : bool, optional
+            whether or not to return the resulting bin edges. Defautls to False
+        return_std : bool, optional
+            Whether or not to return the standard deviation and standard error of the mean of each bin. 
+            Defaults to False.
+        return_gradients : bool, optional
+            Whether or not to return the approximate gradient of each bin. The gradient is computed by
+            taking the mean of the differences between each pair of neighboring points in radial space
+
+        Returns
+        -------
+        delta_sigma : float or float array 
+            The differential surface density, :math:`\\Delta\\Sigma = \\gamma\\Sigma_c`, in proper
+            :math:`M_{\\odot}/\\text{pc}^2 
+        '''
+        
+        self._check_sources()
+        
+        yt = self._yt[self_radial_mask]
+        r = self._r[self._radial_mask]
+        sigma_crit = self.calc_sigma_crit(self._zs)
+        delta_sigma = yt*sigma_crit
+        
+        # get bin means
+        [r_mean, bin_edges, _] = stats.binned_statistic(r, r, statistic='mean', bins=bins)
+        [delta_sigma_mean,_,_] = stats.binned_statistic(r, delta_sigma, statistic='mean', bins=nbins)
+        return_arrays = [r_mean, delta_sigma_mean], 
+        return_dtypes = [('r_mean', float), ('delta_sigma_mean', float)]
+       
+       # and standard deviations, errors of the mean
+        if(return_std):
+            [delta_sigma_std,_,_] = stats.binned_statistic(r, delta_sigma, statistic='std', bins=nbins)
+            [delta_sigma_count,_,_] = stats.binned_statistic(r, delta_sigma, statistic='count', bins=nbins)
+            delta_sigma_se = delta_sigma_std / delta_sigma_count
+            
+            [r_std,_,_] = stats.binned_statistic(r, r, statistic='std', bins=nbins)
+            [r_count,_,_] = stats.binned_statistic(r, r, statistic='count', bins=nbins)
+            r_se = r_std / r_count
+            
+            return_arrays.extend([r_mean, r_std, r_se, delta_sigma_mean, delta_sigma_std, delta_sigma_se], 
+            return_dtypes.extend([('r_mean', float), ('r_std', float), ('r_se_mean', float), 
+                                  ('delta_sigma_mean', float), ('delta_sigma_std', float)), 
+                                  ('delta_sigma_se_mean', float)]) 
+
+        # return bin edges
+        if(return_edges):
+            return_arrays.append(bin_edges)
+            return_dtypes.append(('bin_edges', float))
+        
+        # return bin gradient and errors... compute these manually
+        if(return_gradients):
+            
+            bin_gradients  = np.zeros(nbins)
+            for i in range(nbins):
+                bin_mask = np.logical_and(r > bin_edges[i], r < bin_eges[i+1])
+                ds, dr = delta_sigma[bin_mask], r[bin_mask]
+                bin_gradients[i] = np.mean(np.gradient(ds, varargs=dr))
+            
+            return_arrays.append(bin_gradients)
+            return_dtypes.append(('bin_grad', float))
+            
+            
+
+        return np.rec.fromarrays(return_arrays, dtype = return_dtypes)
+        
