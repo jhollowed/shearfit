@@ -56,7 +56,7 @@ def fit_nfw_profile_lstq(data, profile, r200_bounds, conc_bounds = [0,10], rmin=
         Whether or not to average the shears given by the `data` object in radial bins. If True, fit 
         to the resulting binned averages rather than the input data points. Defaults to `False`.
     bins : int or float array, optional
-        The `bins` argument to pass to `scipy.stats.binned_statistic`, if `bin_data` ia set to `True`. 
+        The `bins` argument to pass to `data.calc_delta_sigma_binned`, if `bin_data` ia set to `True`. 
         Defaults to `None`, though will crash if not provided while `bin_data` is `True`.
     bootstrap : boolean, optional
         Whether or not to perform fitted parameter bootstrap error estaimtion. If False, and also using 
@@ -72,6 +72,7 @@ def fit_nfw_profile_lstq(data, profile, r200_bounds, conc_bounds = [0,10], rmin=
     replace : boolean, optional
         Whether or not to perform the bootstrap resamples with replacement. Defaults to `True`.
     skipShear : boolean, optional
+        **DEPRECATED** 
         If this flag is set to `True`, then rather than scaling the shear magnitude by the critical surface, 
         and then fitting, the shear itself will be ignored, and the fitting procedure will directly access
         the density estimation result (if it was computed and stored as an attribute of obs_lens_system)
@@ -87,30 +88,18 @@ def fit_nfw_profile_lstq(data, profile, r200_bounds, conc_bounds = [0,10], rmin=
         the best fit parameters, and their errors.
     """
     
-    # get the background data, and scale the tangential shear to ΔΣ
+    # set radial cuts, get the background data, and ΔΣ
+    sources.set_radial_cuts(rmin, rmax)
     sources = data.get_background()
-    r_all = sources['r']
-    Ec = data.calc_sigma_crit()
-    if(not skipShear):
-        dSigma_data_all = sources['yt'] * Ec
-    else:
-        dSigma_data_all = sources[''] * Ec
-    
-    # trim sources in radial dimension
-    if(rmax is None): radial_mask = (r_all >= rmin)
-    else: radial_mask = np.logical_and(r_all >= rmin, r_all <= rmax)
-    r_all = r_all[radial_mask]
-    dSigma_data_all = dSigma_data_all[radial_mask]
-
-    # bin data
-    if(bin_data == True):
+    if(bin_data): 
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
-        [dSigma_data,_,_] = stats.binned_statistic(r_all, dSigma_data_all, statistic='mean', bins=bins)
-        [r,_,_] = stats.binned_statistic(r_all, r_all, statistic='mean', bins=bins)
+        binned_data = dat.calc_delta_sigma_binned(nbins=bins)
+        r_all = binned_data['r_mean']
+        dSigma_data_all = binned_data['delta_sigma_mean']
     else:
-        r = r_all
-        dSigma_data = dSigma_data_all 
-
+        r_all = sources['r']
+        dSigma_data_all = data.calc_delta_sigma()
+    
     # get parameter guesses from initial NFW form
     rad_init = profile.r200c
     conc_init = profile.c
@@ -283,7 +272,7 @@ def fit_nfw_profile_gridscan(data, profile, r200_bounds, conc_bounds = [0,10], r
         Whether or not to average the shears given by the `data` object in radial bins. If True, fit 
         to the resulting binned averages rather than the input data points. Defaults to `False`.
     bins : int or float array, optional
-        The `bins` argument to pass to `scipy.stats.binned_statistic`, if `bin_data` ia set to `True`. 
+        The `bins` argument to pass to `data.calc_delta_sigma_binned`, if `bin_data` ia set to `True`. 
         Defaults to `None`, though will crash if not provided while `bin_data` is `True`.
 
     Return
@@ -298,26 +287,19 @@ def fit_nfw_profile_gridscan(data, profile, r200_bounds, conc_bounds = [0,10], r
     rsamp = np.linspace(r200_bounds[0], r200_bounds[1], n)
     csamp = np.linspace(conc_bounds[0], conc_bounds[1], n)
     
-    # get the background data, and scale the tangential shear to ΔΣ 
+    # set radial cuts, get the background data, and ΔΣ
+    sources.set_radial_cuts(rmin, rmax)
     sources = data.get_background()
-    Ec = data.calc_sigma_crit()
-    dSigma_data = sources['yt'] * Ec
-    r = sources['r']
-    
-    # trim sources in radial dimension
-    if(rmax is None): radial_mask = (r >= rmin)
-    else: radial_mask = np.logical_and(r >= rmin, r <= rmax)
-    r = r[radial_mask]
-    dSigma_data = dSigma_data[radial_mask]
-    
-    # bin data
-    if(bin_data == True):
+    if(bin_data): 
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
-        [dSigma_data,_,_] = stats.binned_statistic(r, dSigma_data, statistic='mean', bins=bins)
-        [r,_,_] = stats.binned_statistic(r, r, statistic='mean', bins=bins)
+        binned_data = dat.calc_delta_sigma_binned(nbins=bins)
+        r = binned_data['r_mean']
+        dSigma_data = binned_data['delta_sigma_mean']
+    else:
+        r = sources['r']
+        dSigma_data = data.calc_delta_sigma()
  
     cost = np.zeros((n, n))
-
     for i in range(n):
         for j in range(n):
             grid_params = [rsamp[j], csamp[i]]

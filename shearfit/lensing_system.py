@@ -87,7 +87,7 @@ class obs_lens_system:
         assert(self._has_sources), 'sources undefined; first run set_background()'
 
 
-    def set_radial_cuts(rmin=None, rmax=None)
+    def set_radial_cuts(self, rmin=None, rmax=None)
         '''
         Sets a class-wide radial mask which will be applied to data vectors returned from 
         `get_background()`, `calc_delta_sigma()`, `calc_delta_sigma_binned()`, and `calc_sigma_crit()`.
@@ -397,7 +397,7 @@ class obs_lens_system:
         return delta_sigma
     
     
-    def calc_delta_sigma_binned(self, nbins, return_edges=False, return_std=False)
+    def calc_delta_sigma_binned(self, nbins, return_edges=False, return_std=False, return_gradients=False)
         '''
         Computes :math:`\\Delta\\Sigma = \\gamma\\Sigma_c`, the differential surface density at the lens 
         redshift :math:`z_l`, in proper :math:`M_{\\odot}/\\text{pc}^2`, assuming a flat cosmology. 
@@ -415,6 +415,7 @@ class obs_lens_system:
         return_gradients : bool, optional
             Whether or not to return the approximate gradient of each bin. The gradient is computed by
             taking the mean of the differences between each pair of neighboring points in radial space
+            (specifically, mean of `np.gradient` result). Defaults to False.
 
         Returns
         -------
