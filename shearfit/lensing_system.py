@@ -469,7 +469,4 @@ class obs_lens_system:
             return_arrays.append(bin_gradients)
             return_dtypes.append(('bin_grad', float))
             
-            
-
-        return np.rec.fromarrays(return_arrays, dtype = return_dtypes)
-        
+        return np.rec.fromarrays(return_arrays, dtype = return_dtypes) 
