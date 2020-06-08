@@ -89,16 +89,18 @@ def fit_nfw_profile_lstq(data, profile, r200_bounds, conc_bounds = [0,10], rmin=
     """
     
     # set radial cuts, get the background data, and ΔΣ
-    sources.set_radial_cuts(rmin, rmax)
+    data.set_radial_cuts(rmin, rmax)
     sources = data.get_background()
+    r_all = sources['r']
+    dSigma_data_all = data.calc_delta_sigma()
     if(bin_data): 
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
-        binned_data = dat.calc_delta_sigma_binned(nbins=bins)
-        r_all = binned_data['r_mean']
-        dSigma_data_all = binned_data['delta_sigma_mean']
+        binned_data = data.calc_delta_sigma_binned(nbins=bins)
+        r = binned_data['r_mean']
+        dSigma_data = binned_data['delta_sigma_mean']
     else:
-        r_all = sources['r']
-        dSigma_data_all = data.calc_delta_sigma()
+        r = r_all
+        dSigma_data = dSigma_data_all
     
     # get parameter guesses from initial NFW form
     rad_init = profile.r200c
@@ -133,6 +135,9 @@ def fit_nfw_profile_lstq(data, profile, r200_bounds, conc_bounds = [0,10], rmin=
     # if bootstrap==True, then repeat the entire process above bootN times to estimate the
     # recovered parameter errors. Else, return zero error on the radius, and return the 
     # intrinsic c-M scatter on the concentration (zero if c is free)
+    # Because we are defining a unique mask on the population per-iteration of the bootstrap, 
+    # we have to bin here, rather than use the built-in binning functions offered by the 
+    # 'data' object
     if(bootstrap):
         bootstrap_profile = copy.deepcopy(profile)
         params_bootstrap = np.zeros((bootN, 2))
@@ -288,11 +293,11 @@ def fit_nfw_profile_gridscan(data, profile, r200_bounds, conc_bounds = [0,10], r
     csamp = np.linspace(conc_bounds[0], conc_bounds[1], n)
     
     # set radial cuts, get the background data, and ΔΣ
-    sources.set_radial_cuts(rmin, rmax)
+    data.set_radial_cuts(rmin, rmax)
     sources = data.get_background()
     if(bin_data): 
         if(bins is None): raise Exception('bin_data set to True but bins arg not provided')
-        binned_data = dat.calc_delta_sigma_binned(nbins=bins)
+        binned_data = data.calc_delta_sigma_binned(nbins=bins)
         r = binned_data['r_mean']
         dSigma_data = binned_data['delta_sigma_mean']
     else:

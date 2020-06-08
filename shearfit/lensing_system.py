@@ -1,6 +1,7 @@
 import pdb
 import warnings
 import numpy as np
+from scipy import stats
 import astropy.units as units
 import astropy.constants as const
 from astropy.cosmology import WMAP7
@@ -335,7 +336,7 @@ class obs_lens_system:
         rho : float or float array 
             The projected mass density at the source positions on the lens plane
         '''
-        rho = self._k * self.calc_sigma_crit(self._zs)
+        rho = self._k * self.calc_sigma_crit()
         return rho
 
 
@@ -392,7 +393,7 @@ class obs_lens_system:
         ''' 
         self._check_sources()
         yt = self._yt[self._radial_mask]
-        sigma_crit = self.calc_sigma_crit(self._zs)
+        sigma_crit = self.calc_sigma_crit()
         delta_sigma = yt*sigma_crit
         return delta_sigma
     
@@ -414,8 +415,7 @@ class obs_lens_system:
             Defaults to False.
         return_gradients : bool, optional
             Whether or not to return the approximate gradient of each bin. The gradient is computed by
-            taking the mean of the differences between each pair of neighboring points in radial space
-            (specifically, mean of `np.gradient` result). Defaults to False.
+            fitting a linear form to each bin's data, and returning the slope parameter. Defaults to False.
 
         Returns
         -------
@@ -425,17 +425,21 @@ class obs_lens_system:
         '''
         
         self._check_sources()
-        
-        yt = self._yt[self._radial_mask]
+       
+        # load data and sort by increasing radial distance
         r = self._r[self._radial_mask]
-        sigma_crit = self.calc_sigma_crit(self._zs)
+        sorter = np.argsort(r)
+        r = r[sorter]
+        
+        yt = self._yt[self._radial_mask][sorter]
+        sigma_crit = self.calc_sigma_crit()[sorter]
         delta_sigma = yt*sigma_crit
         
         # get bin means
-        [r_mean, bin_edges, _] = stats.binned_statistic(r, r, statistic='mean', bins=bins)
+        [r_mean, bin_edges, _] = stats.binned_statistic(r, r, statistic='mean', bins=nbins)
         [delta_sigma_mean,_,_] = stats.binned_statistic(r, delta_sigma, statistic='mean', bins=nbins)
-        return_arrays = [r_mean, delta_sigma_mean], 
-        return_dtypes = [('r_mean', float), ('delta_sigma_mean', float)]
+        return_arrays = [r_mean, delta_sigma_mean] 
+        return_cols = ['r_mean', 'delta_sigma_mean']
        
        # and standard deviations, errors of the mean
         if(return_std):
@@ -447,25 +451,25 @@ class obs_lens_system:
             [r_count,_,_] = stats.binned_statistic(r, r, statistic='count', bins=nbins)
             r_se = r_std / r_count
             
-            return_arrays.extend([r_mean, r_std, r_se, delta_sigma_mean, delta_sigma_std, delta_sigma_se]) 
-            return_dtypes.extend([('r_mean', float), ('r_std', float), ('r_se_mean', float), 
-                                  ('delta_sigma_mean', float), ('delta_sigma_std', float), 
-                                  ('delta_sigma_se_mean', float)]) 
+            return_arrays.extend([r_std, r_se, delta_sigma_std, delta_sigma_se]) 
+            return_cols.extend(['r_std', 'r_se_mean', 'delta_sigma_std', 'delta_sigma_se_mean']) 
 
         # return bin edges
         if(return_edges):
             return_arrays.append(bin_edges)
-            return_dtypes.append(('bin_edges', float))
+            return_cols.append('bin_edges')
         
         # return bin gradient and errors... compute these manually
         if(return_gradients): 
             bin_gradients  = np.zeros(nbins)
             for i in range(nbins):
-                bin_mask = np.logical_and(r > bin_edges[i], r < bin_eges[i+1])
+                bin_mask = np.logical_and(r > bin_edges[i], r < bin_edges[i+1])
                 ds, dr = delta_sigma[bin_mask], r[bin_mask]
-                bin_gradients[i] = np.mean(np.gradient(ds, varargs=dr))
-            
+                bin_gradients[i],_ = np.polyfit(dr, ds, 1)    
             return_arrays.append(bin_gradients)
-            return_dtypes.append(('bin_grad', float))
-            
-        return np.rec.fromarrays(return_arrays, dtype = return_dtypes) 
+            return_cols.append('bin_grad')
+        
+        # gather for return
+        bin_dict = {}
+        for i in range(len(return_arrays)): bin_dict[return_cols[i]] = return_arrays[i]
+        return bin_dict
