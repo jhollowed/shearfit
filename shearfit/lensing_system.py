@@ -463,9 +463,13 @@ class obs_lens_system:
         if(return_gradients): 
             bin_gradients  = np.zeros(nbins)
             for i in range(nbins):
+                
                 bin_mask = np.logical_and(r > bin_edges[i], r < bin_edges[i+1])
-                ds, dr = delta_sigma[bin_mask], r[bin_mask]
-                bin_gradients[i],_ = np.polyfit(dr, ds, 1)    
+                if(np.sum(bin_mask) == 0): bin_gradients[i] = float('NaN')
+                else:
+                    ds, dr = delta_sigma[bin_mask], r[bin_mask]
+                    bin_gradients[i],_ = np.polyfit(dr, ds, 1)    
+            
             return_arrays.append(bin_gradients)
             return_cols.append('bin_grad')
         
