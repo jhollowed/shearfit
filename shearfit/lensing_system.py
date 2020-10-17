@@ -187,7 +187,7 @@ class obs_lens_system:
         #                                     180/np.pi * self._theta2 * 3600], axis=0) * units.arcsec
         #self._r = (angular_sep_arcsec / arcsec_per_Mpc).value
        
-        # Wright & Brainerd, under Eq.10
+        # Projected distance in proper Mpc; Wright & Brainerd, under Eq.10
         self._r = np.linalg.norm([self._theta1, self._theta2], axis=0) * \
                                   self._cosmo.angular_diameter_distance(self.zl).value
         

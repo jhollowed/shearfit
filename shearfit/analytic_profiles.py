@@ -89,7 +89,7 @@ class NFW:
         self.update_params()
 
     @property
-    def del_c(self): return self._del_c
+    def del_c(self): return self._del_c   
 
 
     def update_params(self):
@@ -242,7 +242,7 @@ class NFW:
         ----------
         r : float array
             Proper projected radius relative to the center of the lens; 
-            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc`.
+            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in proper :math:`Mpc`.
         
         Returns
         -------
@@ -275,7 +275,7 @@ class NFW:
         ----------
         r : float array
             Proper projected radius relative to the center of the lens; 
-            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in comoving :math:`Mpc`.
+            :math:`r = D_l\\sqrt{\\theta_1^2 + \\theta_2^2}`, in proper :math:`Mpc`.
         
         Returns
         -------
@@ -311,3 +311,30 @@ class NFW:
         sigma_nfw = prefactor * sigma
         
         return sigma_nfw
+    
+
+    def rho(self, r):
+        """
+        Computes the 3D NFW density :math:`\\rho(r)` at projected proper radii `r`.
+        
+        Parameters
+        ----------
+        r : float array
+            Proper radial distance relative to the center of the lens in proper :math:`Mpc`.
+        
+        Returns
+        -------
+        rho : float array
+            The density :math:`\\rho` in proper :math:`M_{\\odot}/\\text{Mpc}^3`
+        """
+
+        # define critical density rho_crit in proper M_sun Mpc^-3,
+        rho_crit = self._cosmo.critical_density(self.zl)
+        rho_crit = rho_crit.to(units.Msun/units.Mpc**3).value
+
+        # evaluate NFW profile
+        pref = self._del_c * rho_crit
+        x = r / self._rs
+        rho = pref / (x * (1+x)**2)
+
+        return rho

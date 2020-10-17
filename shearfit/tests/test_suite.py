@@ -58,7 +58,7 @@ class TestNFW(TestCase):
 
     def test_delta_sigma(self, cosmo=WMAP7, tolerance=1e-6):
         '''
-        This function test the differential surface density calculation of the `NFW` class in 
+        This function tests the differential surface density calculation of the `NFW` class in 
         `analytic_profiles.py`, against the `cluster-lensing` package by Jes Ford
         
         Parameters
@@ -134,7 +134,6 @@ class TestNFW(TestCase):
         self.assertTrue( max(fdiff) <= tolerance)
 
 
-
     def test_sigma_crit(self, cosmo=WMAP7, tolerance=1e-3):
         '''
         This function test the critical surface density calculation of the `obs_lens_system` class 
@@ -168,4 +167,35 @@ class TestNFW(TestCase):
         
         # compute fractional difference and assert error tolerance
         fdiff = (this_sig_crit - birrer_sig_crit) / (birrer_sig_crit)
+        self.assertTrue( max(fdiff) <= tolerance)
+    
+    
+    def test_rho(self, cosmo=WMAP7, tolerance=1e-6):
+        '''
+        This function test the 3D mass density calculation of the `NFW` class in 
+        `analytic_profiles.py`, against the `halotools` package by Andrew Hearin
+        
+        Parameters
+        ----------
+        cosmo : `AstroPy` `cosmology` object
+            The cosmology to use for computing density parameters
+        tolerance : float
+            The error tolerance to assert; if the fractional difference between this 
+            package and `halotools` is above this value, then the test is failed.
+        '''
+        
+        # decalre halo objects and parameters
+        halo = _test_halo()
+        this_NFW = NFW(halo['r'], halo['c'], halo['zl'])
+        halotools_NFW = em.NFWProfile(cosmology=cosmo, redshift=halo['zl'], mdef='200c')
+        halotools_m200c = halotools_NFW.halo_radius_to_halo_mass(halo['r'] * cosmo.h)
+        
+        # get mass desnity, and halotools mass density, in M_sun/Mpc^3
+        r_bins = np.linspace(0.1, halo['r']*3, 100) 
+        this_rho = this_NFW.rho(r_bins)
+        halotools_rho = halotools_NFW.mass_density(radius=r_bins * cosmo.h, mass=halotools_m200c, conc = halo['c'])
+        halotools_rho = halotools_rho * cosmo.h**2
+        
+        # compute fractional difference and assert error tolerance
+        fdiff = (this_rho - halotools_rho) / (halotools_rho)
         self.assertTrue( max(fdiff) <= tolerance)
