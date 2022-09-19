@@ -368,13 +368,13 @@ class obs_lens_system:
         # --> warning: this assumes a flat cosmology; or that angular diamter distance = proper distance
         G = const.G.to(units.Mpc**3 / (units.M_sun * units.Gyr**2)).value
         C = const.c.to(units.Mpc / units.Gyr).value
-        Ds = self._cosmo.angular_diameter_distance(zs).value
-        Dl = self._cosmo.angular_diameter_distance(self.zl).value
+        Ds = self._cosmo.comoving_distance(zs).value
+        Dl = self._cosmo.comoving_distance(self.zl).value
         Dls = Ds - Dl
         
         # critical surface mass density Σ_c in proper M_sun/pc^2; 
         # final quotient scales to Mpc to pc
-        sigma_crit = (C**2/(4*np.pi*G) * (Ds)/(Dl*Dls))
+        sigma_crit = (C**2/(4*np.pi*G) *(1.+self.zl) * (Ds)/(Dl*Dls))
         sigma_crit = sigma_crit / (1e12)
 
         return sigma_crit
